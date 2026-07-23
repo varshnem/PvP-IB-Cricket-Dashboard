@@ -28,26 +28,56 @@ MAX_OVERS = 10
 MAX_WICKETS = 5
 ACCESS_FILE = "Access.xlsx"
 
-##############
-# Helper for Access
-##############
+# ==================================================
+# SESSION STATE
+# ==================================================
+
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
+
+if "role" not in st.session_state:
+    st.session_state["role"] = None
+
+if "username" not in st.session_state:
+    st.session_state["username"] = None
+
+# ==================================================
+# HELPER FOR ACCESS
+# ==================================================
 
 def load_users():
 
     try:
-
         return pd.read_excel(
             ACCESS_FILE,
             sheet_name="Users"
         )
 
-    except:
-
+    except Exception:
         return pd.DataFrame(
             columns=[
                 "Username",
                 "Password",
                 "Role",
+                "Status"
+            ]
+        )
+
+
+def load_access_requests():
+
+    try:
+        return pd.read_excel(
+            ACCESS_FILE,
+            sheet_name="Access_Requests"
+        )
+
+    except Exception:
+        return pd.DataFrame(
+            columns=[
+                "Username",
+                "Email",
+                "RequestedOn",
                 "Status"
             ]
         )
@@ -75,7 +105,6 @@ with season_col:
         list(season_files.keys()),
         label_visibility="collapsed"
     )
-
 
 FILE = season_files[season]
 
@@ -135,10 +164,10 @@ groups = {
 }
 
 all_teams = (
-    groups["Elite"] +
-    groups["Super"] +
-    groups["Golden"] +
-    groups["Challenger"]
+    groups["Elite"]
+    + groups["Super"]
+    + groups["Golden"]
+    + groups["Challenger"]
 )
 
 # ==================================================
@@ -233,7 +262,8 @@ def convert_overs(value):
 
     try:
         value = float(value)
-    except:
+
+    except Exception:
         return 0.0
 
     whole_overs = int(value)
@@ -255,7 +285,8 @@ def decimal_to_cricket_overs(value):
 
     try:
         value = float(value)
-    except:
+
+    except Exception:
         return "0.0"
 
     whole_overs = int(value)
@@ -270,7 +301,7 @@ def decimal_to_cricket_overs(value):
 # ==================================================
 # ICC STYLE OVERS FOR NRR
 # ==================================================
-# Your tournament:
+# Tournament rule:
 # 10 overs maximum
 # 5 wickets maximum
 #
@@ -283,7 +314,8 @@ def get_overs_for_nrr(overs_entered, wickets_lost):
 
     try:
         wickets_lost = int(wickets_lost)
-    except:
+
+    except Exception:
         wickets_lost = 0
 
     if wickets_lost >= MAX_WICKETS:
@@ -608,139 +640,8 @@ def write_calculated_points_to_excel(
 # LOAD MATCH HISTORY AND CURRENT TABLES
 # ==================================================
 
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
-
-if not st.session_state["logged_in"]:
-
-    st.subheader("📝 Request Access")
-
-    req_username = st.text_input(
-        "Username",
-        key="request_username"
-    )
-
-    req_email = st.text_input(
-        "Email",
-        key="request_email"
-    )
-    
-    if st.button(
-    "Submit Request",
-    key="request_submit"
-    ):
-
-    
-        try:
-
-            requests_df = pd.read_excel(
-                ACCESS_FILE,
-                sheet_name="Access_Requests"
-                )
-
-            new_row = pd.DataFrame(
-                [[
-                    req_username,
-                    req_email,
-                    datetime.now().strftime(
-                        "%Y-%m-%d %H:%M"
-                    ),
-                    "Pending"
-                ]],
-                columns=[
-                    "Username",
-                    "Email",
-                    "RequestedOn",
-                    "Status"
-                ]
-            )
-
-            requests_df = pd.concat(
-                [requests_df, new_row],
-                ignore_index=True
-            )
-
-            with pd.ExcelWriter(
-                ACCESS_FILE,
-                engine="openpyxl",
-                mode="a",
-                if_sheet_exists="replace"
-            ) as writer:
-
-                requests_df.to_excel(
-                    writer,
-                    sheet_name="Access_Requests",
-                    index=False
-                )
-
-            st.success(
-                "✅ Access request submitted"
-            )
-
-        except Exception as e:
-
-            st.error(
-                f"Error: {e}"
-            )
-    #st.stop() # <---- ADD THIS LINE
-    st.sidebar.subheader("🔐 Login")
-
-    username = st.sidebar.text_input(
-        "Username"
-    )
-
-    password = st.sidebar.text_input(
-        "Password",
-        type="password"
-    )
-
-
-    if st.sidebar.button("Login"):
-
-        users_df = load_users()
-
-        user_match = users_df[
-            (users_df["Username"] == username)
-            &
-            (users_df["Password"] == password)
-            &
-            (users_df["Status"] == "Approved")
-        ]
-
-        if not user_match.empty:
-
-            st.session_state["logged_in"] = True
-            st.session_state["role"] = user_match.iloc[0]["Role"]
-            st.session_state["username"] = username
-
-            st.rerun()
-
-        else:
-
-            st.sidebar.error(
-                "Invalid credentials"
-            )
-        st.stop() # ADD THIS LINE
-else:
-
-    st.sidebar.success(
-        f"✅ {st.session_state['username']}"
-    )
-
-    st.sidebar.info(
-        f"Role: {st.session_state['role']}"
-    )
-
-    if st.sidebar.button("Logout"):
-
-        st.session_state["logged_in"] = False
-        st.session_state.pop("role", None)
-        st.session_state.pop("username", None)
-
-        st.rerun()
-
-
 match_history = load_match_entries()
+
 elite_df = calculate_points_table(
     "Elite",
     groups["Elite"],
@@ -771,8 +672,7 @@ challenger_df = calculate_points_table(
 
 c1, c2, c3, c4, right = st.columns(
     [1, 1, 1, 1, 1]
-    )
-
+)
 
 with c1:
     st.metric("Elite Teams", len(groups["Elite"]))
@@ -823,8 +723,6 @@ def show_group(title, table_df, color):
 
     with m2:
         st.metric("Leader", leader)
-
-
 
     display_df = table_df[
         [
@@ -920,229 +818,234 @@ with tab5:
         "Admin",
         "Scorekeeper"
     ]:
+
         st.warning(
-            "You do not have permission to add match results."
+            "You do not have permission to add match results. Please login as Admin or Scorekeeper from the User Access section at the bottom."
         )
-        st.stop()
-
-    st.markdown(
-        """
-        <div style="
-            background-color:#6C757D;
-            color:white;
-            padding:12px;
-            border-radius:8px;
-            font-size:24px;
-            font-weight:bold;
-            margin-bottom:15px;">
-            📝 Enter Match Result
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.info(
-        "Tournament rule applied: 10 overs maximum, 5 wickets maximum. "
-        "If a team loses 5 wickets, NRR uses full 10 overs for calculation, while the table displays actual overs."
-    )
-
-    selected_group = st.selectbox(
-        "Select Group",
-        [
-            "Elite",
-            "Super",
-            "Golden",
-            "Challenger"
-        ]
-    )
-
-    group_teams = groups[selected_group]
-
-    if not group_teams:
-        st.error(
-            f"No teams configured for {selected_group} in Teams_Master."
-        )
-        st.stop()
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-
-        team_a = st.selectbox(
-            "Team A",
-            group_teams,
-            key="team_a"
-        )
-
-        runs_a = st.number_input(
-            "Runs A",
-            min_value=0,
-            value=0,
-            key="runs_a"
-        )
-
-        wickets_a = st.number_input(
-            "Wickets A",
-            min_value=0,
-            max_value=MAX_WICKETS,
-            value=0,
-            key="wickets_a"
-        )
-
-        overs_a = st.number_input(
-            "Overs A",
-            min_value=0.0,
-            max_value=float(MAX_OVERS),
-            value=0.0,
-            step=0.1,
-            key="overs_a"
-        )
-
-    with col2:
-
-        team_b_options = [
-            team for team in group_teams
-            if team != team_a
-        ]
-
-        team_b = st.selectbox(
-            "Team B",
-            team_b_options,
-            key="team_b"
-        )
-
-        runs_b = st.number_input(
-            "Runs B",
-            min_value=0,
-            value=0,
-            key="runs_b"
-        )
-
-        wickets_b = st.number_input(
-            "Wickets B",
-            min_value=0,
-            max_value=MAX_WICKETS,
-            value=0,
-            key="wickets_b"
-        )
-
-        overs_b = st.number_input(
-            "Overs B",
-            min_value=0.0,
-            max_value=float(MAX_OVERS),
-            value=0.0,
-            step=0.1,
-            key="overs_b"
-        )
-
-    if st.button("💾 Save Match Result"):
-
-        if team_a == team_b:
-
-            st.error("Team A and Team B cannot be the same.")
-
-        elif overs_a <= 0 or overs_b <= 0:
-
-            st.error("Overs must be greater than 0 for both teams.")
-
-        else:
-
-            if runs_a > runs_b:
-                winner = team_a
-            elif runs_b > runs_a:
-                winner = team_b
-            else:
-                winner = "Tie"
-
-            match_data = [
-                datetime.now().strftime("%Y-%m-%d %H:%M"),
-                selected_group,
-                team_a,
-                runs_a,
-                wickets_a,
-                overs_a,
-                team_b,
-                runs_b,
-                wickets_b,
-                overs_b,
-                winner,
-                "Active"
-            ]
-
-            try:
-
-                save_match(match_data)
-
-                updated_history = load_match_entries()
-
-                updated_elite_df = calculate_points_table(
-                    "Elite",
-                    groups["Elite"],
-                    updated_history
-                )
-
-                updated_super_df = calculate_points_table(
-                    "Super",
-                    groups["Super"],
-                    updated_history
-                )
-
-                updated_golden_df = calculate_points_table(
-                    "Golden",
-                    groups["Golden"],
-                    updated_history
-                )
-
-                updated_challenger_df = calculate_points_table(
-                    "Challenger",
-                    groups["Challenger"],
-                    updated_history
-                )
-
-                write_calculated_points_to_excel(
-                    updated_elite_df,
-                    updated_super_df,
-                    updated_golden_df,
-                    updated_challenger_df
-                )
-
-                st.success(
-                    f"✅ Match saved successfully. Winner: {winner}"
-                )
-
-                st.rerun()
-
-            except PermissionError:
-
-                st.error(
-                    "Permission denied. Please close the Excel workbook and then click Save again."
-                )
-
-            except Exception as e:
-
-                st.error(f"Error while saving match: {e}")
-
-    st.markdown("---")
-
-    st.subheader("Recent Online Match Entries")
-
-    latest_history = load_match_entries()
-
-    if latest_history.empty:
-
-        st.info("No online match entries yet.")
 
     else:
 
-        active_latest_history = latest_history[
-            latest_history["Status"] != "Deleted"
-        ]
-
-        st.dataframe(
-            active_latest_history.tail(20),
-            hide_index=True,
-            use_container_width=True
+        st.markdown(
+            """
+            <div style="
+                background-color:#6C757D;
+                color:white;
+                padding:12px;
+                border-radius:8px;
+                font-size:24px;
+                font-weight:bold;
+                margin-bottom:15px;">
+                📝 Enter Match Result
+            </div>
+            """,
+            unsafe_allow_html=True
         )
+
+        st.info(
+            "Tournament rule applied: 10 overs maximum, 5 wickets maximum. "
+            "If a team loses 5 wickets, NRR uses full 10 overs for calculation, while the table displays actual overs."
+        )
+
+        selected_group = st.selectbox(
+            "Select Group",
+            [
+                "Elite",
+                "Super",
+                "Golden",
+                "Challenger"
+            ]
+        )
+
+        group_teams = groups[selected_group]
+
+        if not group_teams:
+            st.error(
+                f"No teams configured for {selected_group} in Teams_Master."
+            )
+
+        else:
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+
+                team_a = st.selectbox(
+                    "Team A",
+                    group_teams,
+                    key="team_a"
+                )
+
+                runs_a = st.number_input(
+                    "Runs A",
+                    min_value=0,
+                    value=0,
+                    key="runs_a"
+                )
+
+                wickets_a = st.number_input(
+                    "Wickets A",
+                    min_value=0,
+                    max_value=MAX_WICKETS,
+                    value=0,
+                    key="wickets_a"
+                )
+
+                overs_a = st.number_input(
+                    "Overs A",
+                    min_value=0.0,
+                    max_value=float(MAX_OVERS),
+                    value=0.0,
+                    step=0.1,
+                    key="overs_a"
+                )
+
+            with col2:
+
+                team_b_options = [
+                    team for team in group_teams
+                    if team != team_a
+                ]
+
+                team_b = st.selectbox(
+                    "Team B",
+                    team_b_options,
+                    key="team_b"
+                )
+
+                runs_b = st.number_input(
+                    "Runs B",
+                    min_value=0,
+                    value=0,
+                    key="runs_b"
+                )
+
+                wickets_b = st.number_input(
+                    "Wickets B",
+                    min_value=0,
+                    max_value=MAX_WICKETS,
+                    value=0,
+                    key="wickets_b"
+                )
+
+                overs_b = st.number_input(
+                    "Overs B",
+                    min_value=0.0,
+                    max_value=float(MAX_OVERS),
+                    value=0.0,
+                    step=0.1,
+                    key="overs_b"
+                )
+
+            if st.button("💾 Save Match Result"):
+
+                if team_a == team_b:
+
+                    st.error("Team A and Team B cannot be the same.")
+
+                elif overs_a <= 0 or overs_b <= 0:
+
+                    st.error("Overs must be greater than 0 for both teams.")
+
+                else:
+
+                    if runs_a > runs_b:
+                        winner = team_a
+
+                    elif runs_b > runs_a:
+                        winner = team_b
+
+                    else:
+                        winner = "Tie"
+
+                    match_data = [
+                        datetime.now().strftime("%Y-%m-%d %H:%M"),
+                        selected_group,
+                        team_a,
+                        runs_a,
+                        wickets_a,
+                        overs_a,
+                        team_b,
+                        runs_b,
+                        wickets_b,
+                        overs_b,
+                        winner,
+                        "Active"
+                    ]
+
+                    try:
+
+                        save_match(match_data)
+
+                        updated_history = load_match_entries()
+
+                        updated_elite_df = calculate_points_table(
+                            "Elite",
+                            groups["Elite"],
+                            updated_history
+                        )
+
+                        updated_super_df = calculate_points_table(
+                            "Super",
+                            groups["Super"],
+                            updated_history
+                        )
+
+                        updated_golden_df = calculate_points_table(
+                            "Golden",
+                            groups["Golden"],
+                            updated_history
+                        )
+
+                        updated_challenger_df = calculate_points_table(
+                            "Challenger",
+                            groups["Challenger"],
+                            updated_history
+                        )
+
+                        write_calculated_points_to_excel(
+                            updated_elite_df,
+                            updated_super_df,
+                            updated_golden_df,
+                            updated_challenger_df
+                        )
+
+                        st.success(
+                            f"✅ Match saved successfully. Winner: {winner}"
+                        )
+
+                        st.rerun()
+
+                    except PermissionError:
+
+                        st.error(
+                            "Permission denied. Please close the Excel workbook and then click Save again."
+                        )
+
+                    except Exception as e:
+
+                        st.error(f"Error while saving match: {e}")
+
+            st.markdown("---")
+
+            st.subheader("Recent Online Match Entries")
+
+            latest_history = load_match_entries()
+
+            if latest_history.empty:
+
+                st.info("No online match entries yet.")
+
+            else:
+
+                active_latest_history = latest_history[
+                    latest_history["Status"] != "Deleted"
+                ]
+
+                st.dataframe(
+                    active_latest_history.tail(20),
+                    hide_index=True,
+                    use_container_width=True
+                )
 
 # ==================================================
 # DELETE MATCH TAB
@@ -1151,154 +1054,150 @@ with tab5:
 with tab6:
 
     if st.session_state.get("role") != "Admin":
+
         st.warning(
-            "Only Admin can delete matches."
+            "Only Admin can delete matches. Please login as Admin from the User Access section at the bottom."
         )
-        st.stop()
-
-    st.subheader("🗑 Delete Match")
-
-    history = load_match_entries()
-
-    if history.empty:
-
-        st.info("No match entries found.")
 
     else:
 
-        if "Status" not in history.columns:
-            history["Status"] = "Active"
+        st.subheader("🗑 Delete Match")
 
-        active_matches = history[
-            history["Status"] != "Deleted"
-        ].copy()
+        history = load_match_entries()
 
-        if active_matches.empty:
+        if history.empty:
 
-            st.info("No active matches found.")
+            st.info("No match entries found.")
 
         else:
 
-            active_matches["MatchLabel"] = (
-                active_matches["Date"].astype(str)
-                + " | "
-                + active_matches["Group"].astype(str)
-                + " | "
-                + active_matches["TeamA"].astype(str)
-                + " vs "
-                + active_matches["TeamB"].astype(str)
-            )
+            if "Status" not in history.columns:
+                history["Status"] = "Active"
 
-            selected_match = st.selectbox(
-                "Select Match to Delete",
-                active_matches["MatchLabel"]
-            )
+            active_matches = history[
+                history["Status"] != "Deleted"
+            ].copy()
 
-            confirm_delete = st.checkbox(
-                "I confirm this match should be deleted"
-            )
+            if active_matches.empty:
 
-            if confirm_delete and st.button(
-                "🗑 Mark Match as Deleted"
-            ):
+                st.info("No active matches found.")
 
-                row_index = active_matches[
-                    active_matches["MatchLabel"] == selected_match
-                ].index[0]
+            else:
 
-                history.loc[
-                    row_index,
-                    "Status"
-                ] = "Deleted"
+                active_matches["MatchLabel"] = (
+                    active_matches["Date"].astype(str)
+                    + " | "
+                    + active_matches["Group"].astype(str)
+                    + " | "
+                    + active_matches["TeamA"].astype(str)
+                    + " vs "
+                    + active_matches["TeamB"].astype(str)
+                )
 
-                try:
+                selected_match = st.selectbox(
+                    "Select Match to Delete",
+                    active_matches["MatchLabel"]
+                )
 
-                    with pd.ExcelWriter(
-                        FILE,
-                        engine="openpyxl",
-                        mode="a",
-                        if_sheet_exists="replace"
-                    ) as writer:
+                confirm_delete = st.checkbox(
+                    "I confirm this match should be deleted"
+                )
 
-                        history.to_excel(
-                            writer,
-                            sheet_name=MATCH_SHEET,
-                            index=False
+                if confirm_delete and st.button(
+                    "🗑 Mark Match as Deleted"
+                ):
+
+                    row_index = active_matches[
+                        active_matches["MatchLabel"] == selected_match
+                    ].index[0]
+
+                    history.loc[
+                        row_index,
+                        "Status"
+                    ] = "Deleted"
+
+                    try:
+
+                        with pd.ExcelWriter(
+                            FILE,
+                            engine="openpyxl",
+                            mode="a",
+                            if_sheet_exists="replace"
+                        ) as writer:
+
+                            history.to_excel(
+                                writer,
+                                sheet_name=MATCH_SHEET,
+                                index=False
+                            )
+
+                        updated_history = load_match_entries()
+
+                        updated_elite_df = calculate_points_table(
+                            "Elite",
+                            groups["Elite"],
+                            updated_history
                         )
 
-                    updated_history = load_match_entries()
+                        updated_super_df = calculate_points_table(
+                            "Super",
+                            groups["Super"],
+                            updated_history
+                        )
 
-                    updated_elite_df = calculate_points_table(
-                        "Elite",
-                        groups["Elite"],
-                        updated_history
-                    )
+                        updated_golden_df = calculate_points_table(
+                            "Golden",
+                            groups["Golden"],
+                            updated_history
+                        )
 
-                    updated_super_df = calculate_points_table(
-                        "Super",
-                        groups["Super"],
-                        updated_history
-                    )
+                        updated_challenger_df = calculate_points_table(
+                            "Challenger",
+                            groups["Challenger"],
+                            updated_history
+                        )
 
-                    updated_golden_df = calculate_points_table(
-                        "Golden",
-                        groups["Golden"],
-                        updated_history
-                    )
+                        write_calculated_points_to_excel(
+                            updated_elite_df,
+                            updated_super_df,
+                            updated_golden_df,
+                            updated_challenger_df
+                        )
 
-                    updated_challenger_df = calculate_points_table(
-                        "Challenger",
-                        groups["Challenger"],
-                        updated_history
-                    )
+                        st.success(
+                            "✅ Match marked as Deleted"
+                        )
 
-                    write_calculated_points_to_excel(
-                        updated_elite_df,
-                        updated_super_df,
-                        updated_golden_df,
-                        updated_challenger_df
-                    )
+                        st.rerun()
 
-                    st.success(
-                        "✅ Match marked as Deleted"
-                    )
+                    except PermissionError:
 
-                    st.rerun()
+                        st.error(
+                            "Permission denied. Please close the Excel workbook and then try again."
+                        )
 
-                except PermissionError:
+                    except Exception as e:
 
-                    st.error(
-                        "Permission denied. Please close the Excel workbook and then try again."
-                    )
+                        st.error(f"Error while deleting match: {e}")
 
-                except Exception as e:
-
-                    st.error(f"Error while deleting match: {e}")
 # ==================================================
 # USER MANAGEMENT
 # ==================================================
 
 with tab7:
-    st.write("USER MANAGEMENT")
+
     if st.session_state.get("role") != "Admin":
 
         st.warning(
-            "Only Admin can access User Management."
+            "Only Admin can access User Management. Please login as Admin from the User Access section at the bottom."
         )
 
     else:
 
         st.subheader("👑 User Management")
 
-        users_df = pd.read_excel(
-            ACCESS_FILE,
-            sheet_name="Users"
-        )
-
-        requests_df = pd.read_excel(
-            ACCESS_FILE,
-            sheet_name="Access_Requests"
-        )
+        users_df = load_users()
+        requests_df = load_access_requests()
 
         st.markdown("### Pending Requests")
 
@@ -1363,8 +1262,7 @@ with tab7:
                 )
 
                 requests_df.loc[
-                    requests_df["Username"] ==
-                    selected_user,
+                    requests_df["Username"] == selected_user,
                     "Status"
                 ] = "Approved"
 
@@ -1392,3 +1290,151 @@ with tab7:
                 )
 
                 st.rerun()
+
+# ==================================================
+# LOGIN / REQUEST ACCESS FOOTER
+# ==================================================
+
+st.markdown("---")
+st.subheader("🔐 User Access")
+
+if st.session_state["logged_in"]:
+
+    col1, col2 = st.columns([4, 1])
+
+    with col1:
+        st.success(
+            f"✅ Logged in as {st.session_state['username']} "
+            f"({st.session_state['role']})"
+        )
+
+    with col2:
+        if st.button("Logout"):
+
+            st.session_state["logged_in"] = False
+            st.session_state["role"] = None
+            st.session_state["username"] = None
+
+            st.rerun()
+
+else:
+
+    col1, col2 = st.columns(2)
+
+    # LOGIN
+    with col1:
+
+        with st.expander("🔐 User Login", expanded=False):
+
+            username = st.text_input(
+                "Username",
+                key="login_username"
+            )
+
+            password = st.text_input(
+                "Password",
+                type="password",
+                key="login_password"
+            )
+
+            if st.button(
+                "Login",
+                key="login_button"
+            ):
+
+                users_df = load_users()
+
+                user_match = users_df[
+                    (users_df["Username"] == username)
+                    &
+                    (users_df["Password"] == password)
+                    &
+                    (users_df["Status"] == "Approved")
+                ]
+
+                if not user_match.empty:
+
+                    st.session_state["logged_in"] = True
+                    st.session_state["role"] = user_match.iloc[0]["Role"]
+                    st.session_state["username"] = username
+
+                    st.rerun()
+
+                else:
+
+                    st.error("Invalid credentials")
+
+    # REQUEST ACCESS
+    with col2:
+
+        with st.expander("📝 Request Access", expanded=False):
+
+            req_username = st.text_input(
+                "Username",
+                key="request_username"
+            )
+
+            req_email = st.text_input(
+                "Email",
+                key="request_email"
+            )
+
+            if st.button(
+                "Submit Request",
+                key="request_submit"
+            ):
+
+                if req_username.strip() == "" or req_email.strip() == "":
+
+                    st.error("Please enter both username and email.")
+
+                else:
+
+                    try:
+
+                        requests_df = load_access_requests()
+
+                        new_row = pd.DataFrame(
+                            [[
+                                req_username,
+                                req_email,
+                                datetime.now().strftime(
+                                    "%Y-%m-%d %H:%M"
+                                ),
+                                "Pending"
+                            ]],
+                            columns=[
+                                "Username",
+                                "Email",
+                                "RequestedOn",
+                                "Status"
+                            ]
+                        )
+
+                        requests_df = pd.concat(
+                            [requests_df, new_row],
+                            ignore_index=True
+                        )
+
+                        with pd.ExcelWriter(
+                            ACCESS_FILE,
+                            engine="openpyxl",
+                            mode="a",
+                            if_sheet_exists="replace"
+                        ) as writer:
+
+                            requests_df.to_excel(
+                                writer,
+                                sheet_name="Access_Requests",
+                                index=False
+                            )
+
+                        st.success(
+                            "✅ Access request submitted"
+                        )
+
+                    except Exception as e:
+
+                        st.error(
+                            f"Error: {e}"
+                        )
