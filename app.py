@@ -1205,6 +1205,17 @@ with tab7:
             requests_df["Status"] == "Pending"
         ]
 
+        pending_count = len(pending)
+
+        if pending_count > 0:
+            st.error(
+                    f"🔔 {pending_count} Pending Access Request(s)"
+            )
+
+        else:
+            st.success(
+                "✅ No Pending Requests"
+            )
         if pending.empty:
 
             st.info("No pending requests.")
