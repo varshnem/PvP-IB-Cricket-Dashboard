@@ -613,6 +613,76 @@ if "logged_in" not in st.session_state:
 
 if not st.session_state["logged_in"]:
 
+    st.subheader("📝 Request Access")
+
+    req_username = st.text_input(
+        "Username",
+        key="request_username"
+    )
+
+    req_email = st.text_input(
+        "Email",
+        key="request_email"
+    )
+    
+    if st.button(
+    "Submit Request",
+    key="request_submit"
+    ):
+
+    
+        try:
+
+            requests_df = pd.read_excel(
+                ACCESS_FILE,
+                sheet_name="Access_Requests"
+                )
+
+            new_row = pd.DataFrame(
+                [[
+                    req_username,
+                    req_email,
+                    datetime.now().strftime(
+                        "%Y-%m-%d %H:%M"
+                    ),
+                    "Pending"
+                ]],
+                columns=[
+                    "Username",
+                    "Email",
+                    "RequestedOn",
+                    "Status"
+                ]
+            )
+
+            requests_df = pd.concat(
+                [requests_df, new_row],
+                ignore_index=True
+            )
+
+            with pd.ExcelWriter(
+                ACCESS_FILE,
+                engine="openpyxl",
+                mode="a",
+                if_sheet_exists="replace"
+            ) as writer:
+
+                requests_df.to_excel(
+                    writer,
+                    sheet_name="Access_Requests",
+                    index=False
+                )
+
+            st.success(
+                "✅ Access request submitted"
+            )
+
+        except Exception as e:
+
+            st.error(
+                f"Error: {e}"
+            )
+    #st.stop() # <---- ADD THIS LINE
     st.sidebar.subheader("🔐 Login")
 
     username = st.sidebar.text_input(
@@ -623,6 +693,7 @@ if not st.session_state["logged_in"]:
         "Password",
         type="password"
     )
+
 
     if st.sidebar.button("Login"):
 
@@ -649,7 +720,7 @@ if not st.session_state["logged_in"]:
             st.sidebar.error(
                 "Invalid credentials"
             )
-
+        st.stop() # ADD THIS LINE
 else:
 
     st.sidebar.success(
@@ -779,7 +850,7 @@ def show_group(title, table_df, color):
 # TABS
 # ==================================================
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
     [
         "🏆 Elite",
         "⭐ Super",
@@ -787,7 +858,6 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
         "🔥 Challenger",
         "📝 Match Entry",
         "🗑 Delete Match",
-        "📝 Request Access",
         "👑 User Management"
     ]
 )
@@ -1204,71 +1274,12 @@ with tab6:
                 except Exception as e:
 
                     st.error(f"Error while deleting match: {e}")
-
-with tab7:
-
-    st.subheader("Request Access")
-
-    req_username = st.text_input(
-        "Username"
-    )
-
-    req_email = st.text_input(
-        "Email"
-    )
-
-    if st.button("Submit Request"):
-
-        requests_df = pd.read_excel(
-            ACCESS_FILE,
-            sheet_name="Access_Requests"
-        )
-
-        new_row = pd.DataFrame(
-            [[
-                req_username,
-                req_email,
-                datetime.now().strftime(
-                    "%Y-%m-%d %H:%M"
-                ),
-                "Pending"
-            ]],
-            columns=[
-                "Username",
-                "Email",
-                "RequestedOn",
-                "Status"
-            ]
-        )
-
-        requests_df = pd.concat(
-            [requests_df, new_row],
-            ignore_index=True
-        )
-
-        with pd.ExcelWriter(
-            ACCESS_FILE,
-            engine="openpyxl",
-            mode="a",
-            if_sheet_exists="replace"
-        ) as writer:
-
-            requests_df.to_excel(
-                writer,
-                sheet_name="Access_Requests",
-                index=False
-            )
-
-        st.success(
-            "Access request submitted."
-        )                    
-
 # ==================================================
 # USER MANAGEMENT
 # ==================================================
 
-with tab8:
-
+with tab7:
+    st.write("USER MANAGEMENT")
     if st.session_state.get("role") != "Admin":
 
         st.warning(
