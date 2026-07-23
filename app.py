@@ -664,11 +664,7 @@ def show_group(title, table_df, color):
     with m2:
         st.metric("Leader", leader)
 
-    with m3:
-        st.metric(
-            "Matches Played",
-            int(table_df["Played"].sum())
-        )
+
 
     display_df = table_df[
         [
