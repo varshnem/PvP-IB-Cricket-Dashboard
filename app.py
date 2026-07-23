@@ -1216,10 +1216,13 @@ with tab6:
 
 with tab7:
 
-    if st.session_state.get("role") != "Admin":
+    if st.session_state.get("role") not in [
+        "Admin",
+        "Scorekeeper"
+    ]:
 
         st.warning(
-            "Only Admin can access User Management. Please login as Admin from the User Access section at the bottom."
+            "Only Admin or Scorekeeper can access User Management. Contact admin to submit Match Entry as Scorekeeper."
         )
 
     else:
