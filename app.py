@@ -2,12 +2,20 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from openpyxl import load_workbook
+import os
+
+# ==================================================
+# PAGE CONFIG
+# ==================================================
+
+st.set_page_config(
+    page_title="PvP IB Cricket Dashboard",
+    layout="wide"
+)
 
 # ==================================================
 # CONFIG
 # ==================================================
-
-FILE = "PvP IB Cricket Dashboard.xlsx"
 
 MATCH_SHEET = "Online_Match_Entry"
 CALCULATED_POINTS_SHEET = "Calculated_Points_Table"
@@ -16,65 +24,86 @@ WIN_POINTS = 2
 TIE_POINTS = 1
 LOSS_POINTS = 0
 
-# Your tournament rule
 MAX_OVERS = 10
 MAX_WICKETS = 5
 
-st.set_page_config(
-    page_title="PvP IB Cricket Dashboard",
-    layout="wide"
-)
+season_files = {
+    "Season 2": "PvP IB Cricket Dashboard - Season 2.xlsx",
+    "Season 3": "PvP IB Cricket Dashboard - Season 3.xlsx"
+}
 
 # ==================================================
-# TITLE
+# TITLE AND SEASON SELECTOR
 # ==================================================
 
-st.title("🏏 PvP IB Cricket Dashboard")
+title_col, season_col = st.columns([8, 2])
+
+with title_col:
+    st.title("🏏 PvP IB Cricket Dashboard")
+
+with season_col:
+    season = st.selectbox(
+        "Season",
+        list(season_files.keys())
+    )
+
+
+FILE = season_files[season]
+
+if not os.path.exists(FILE):
+    st.error(
+        f"Excel file not found: {FILE}. Please create this file in the same folder as app.py."
+    )
+    st.stop()
 
 # ==================================================
-# READ BASE TEAM STRUCTURE FROM EXCEL
+# LOAD TEAMS MASTER
 # ==================================================
 
-points_raw = pd.read_excel(
-    FILE,
-    sheet_name="Points_Tables",
-    header=None
-)
-# ==================================================
-# BASE GROUP TEAM LISTS FROM YOUR EXCEL FILE
-# ==================================================
+try:
+    teams_df = pd.read_excel(
+        FILE,
+        sheet_name="Teams_Master"
+    )
 
-teams_df = pd.read_excel(
-    FILE,
-    sheet_name="Teams_Master"
-)
+    teams_df.columns = teams_df.columns.str.strip()
+
+except Exception as e:
+    st.error(
+        f"Unable to read Teams_Master sheet from {FILE}. Error: {e}"
+    )
+    st.stop()
+
+required_team_columns = ["Group", "Team"]
+
+for col in required_team_columns:
+    if col not in teams_df.columns:
+        st.error(
+            f"Column '{col}' is missing in Teams_Master sheet."
+        )
+        st.stop()
 
 groups = {
     "Elite": teams_df.loc[
         teams_df["Group"] == "Elite",
         "Team"
-    ].tolist(),
+    ].dropna().tolist(),
 
     "Super": teams_df.loc[
         teams_df["Group"] == "Super",
         "Team"
-    ].tolist(),
+    ].dropna().tolist(),
 
     "Golden": teams_df.loc[
         teams_df["Group"] == "Golden",
         "Team"
-    ].tolist(),
+    ].dropna().tolist(),
 
     "Challenger": teams_df.loc[
         teams_df["Group"] == "Challenger",
         "Team"
-    ].tolist()
+    ].dropna().tolist()
 }
-
-
-
-
-
 
 all_teams = (
     groups["Elite"] +
@@ -94,6 +123,9 @@ def load_match_entries():
             FILE,
             sheet_name=MATCH_SHEET
         )
+
+        if "Status" not in history.columns:
+            history["Status"] = "Active"
 
         return history
 
@@ -147,14 +179,16 @@ def save_match(match_data):
 
         ws = wb[MATCH_SHEET]
 
-        # Add Group column if old sheet does not have it
         headers = [cell.value for cell in ws[1]]
-        if "Status" not in headers:
-            ws.cell(row=1, column=12).value = "Status"
 
         if "Group" not in headers:
             ws.insert_cols(2)
             ws.cell(row=1, column=2).value = "Group"
+
+        headers = [cell.value for cell in ws[1]]
+
+        if "Status" not in headers:
+            ws.cell(row=1, column=12).value = "Status"
 
     ws.append(match_data)
 
@@ -163,8 +197,8 @@ def save_match(match_data):
 # ==================================================
 # CRICKET OVERS CONVERSION
 # ==================================================
-# 9.3 means 9 overs and 3 balls
-# Cricket conversion: 9 + 3/6 = 9.5 decimal overs
+# Input 7.3 means 7 overs and 3 balls.
+# Internally convert to decimal overs: 7 + 3/6 = 7.5
 
 def convert_overs(value):
 
@@ -184,19 +218,39 @@ def convert_overs(value):
     return value
 
 # ==================================================
+# DISPLAY OVERS IN CRICKET FORMAT
+# ==================================================
+# Internal 7.5 decimal overs becomes 7.3 cricket overs.
+
+def decimal_to_cricket_overs(value):
+
+    try:
+        value = float(value)
+    except:
+        return "0.0"
+
+    whole_overs = int(value)
+    balls = round((value - whole_overs) * 6)
+
+    if balls == 6:
+        whole_overs += 1
+        balls = 0
+
+    return f"{whole_overs}.{balls}"
+
+# ==================================================
 # ICC STYLE OVERS FOR NRR
 # ==================================================
-# Your rules:
+# Your tournament:
 # 10 overs maximum
 # 5 wickets maximum
 #
-# ICC rule:
-# If team is all out, use full quota of overs.
-# In your league, all out means 5 wickets.
+# If team is all out for 5 wickets, NRR uses full 10 overs.
+# Display still shows actual overs played.
 
 def get_overs_for_nrr(overs_entered, wickets_lost):
 
-    overs = convert_overs(overs_entered)
+    actual_overs = convert_overs(overs_entered)
 
     try:
         wickets_lost = int(wickets_lost)
@@ -206,7 +260,7 @@ def get_overs_for_nrr(overs_entered, wickets_lost):
     if wickets_lost >= MAX_WICKETS:
         return float(MAX_OVERS)
 
-    return overs
+    return actual_overs
 
 # ==================================================
 # CALCULATE POINTS TABLE
@@ -226,9 +280,11 @@ def calculate_points_table(group_name, team_list, match_history):
             "Ties": 0,
             "Points": 0,
             "RunsFor": 0,
-            "OversFor": 0.0,
             "RunsAgainst": 0,
-            "OversAgainst": 0.0
+            "ActualOversFor": 0.0,
+            "ActualOversAgainst": 0.0,
+            "NrrOversFor": 0.0,
+            "NrrOversAgainst": 0.0
         }
 
     if match_history.empty:
@@ -246,9 +302,9 @@ def calculate_points_table(group_name, team_list, match_history):
                     "Ties",
                     "Points",
                     "RunsFor",
-                    "OversFor",
+                    "ActualOversFor",
                     "RunsAgainst",
-                    "OversAgainst",
+                    "ActualOversAgainst",
                     "Scored",
                     "Conceded",
                     "NRR"
@@ -256,10 +312,8 @@ def calculate_points_table(group_name, team_list, match_history):
             )
 
         result["NRR"] = 0.000
-
-        result["Scored"] = "0 / 0"
-        result["Conceded"] = "0 / 0"
-
+        result["Scored"] = "0 / 0.0"
+        result["Conceded"] = "0 / 0.0"
         result["Rank"] = range(1, len(result) + 1)
 
         return result[
@@ -272,9 +326,9 @@ def calculate_points_table(group_name, team_list, match_history):
                 "Ties",
                 "Points",
                 "RunsFor",
-                "OversFor",
+                "ActualOversFor",
                 "RunsAgainst",
-                "OversAgainst",
+                "ActualOversAgainst",
                 "Scored",
                 "Conceded",
                 "NRR"
@@ -282,6 +336,7 @@ def calculate_points_table(group_name, team_list, match_history):
         ]
 
     for _, row in match_history.iterrows():
+
         status = row.get("Status", "Active")
 
         if status == "Deleted":
@@ -304,36 +359,43 @@ def calculate_points_table(group_name, team_list, match_history):
         wickets_a = int(row.get("WicketsA", 0))
         wickets_b = int(row.get("WicketsB", 0))
 
-        # ICC-style NRR overs logic for 10-over, 5-wicket league
-        overs_a_nrr = get_overs_for_nrr(
+        actual_overs_a = convert_overs(
+            row.get("OversA", 0)
+        )
+
+        actual_overs_b = convert_overs(
+            row.get("OversB", 0)
+        )
+
+        nrr_overs_a = get_overs_for_nrr(
             row.get("OversA", 0),
             wickets_a
         )
 
-        overs_b_nrr = get_overs_for_nrr(
+        nrr_overs_b = get_overs_for_nrr(
             row.get("OversB", 0),
             wickets_b
         )
 
         winner = row.get("Winner", "")
 
-        # Played
         table[team_a]["Played"] += 1
         table[team_b]["Played"] += 1
 
-        # Runs and overs for Team A
         table[team_a]["RunsFor"] += runs_a
         table[team_a]["RunsAgainst"] += runs_b
-        table[team_a]["OversFor"] += overs_a_nrr
-        table[team_a]["OversAgainst"] += overs_b_nrr
+        table[team_a]["ActualOversFor"] += actual_overs_a
+        table[team_a]["ActualOversAgainst"] += actual_overs_b
+        table[team_a]["NrrOversFor"] += nrr_overs_a
+        table[team_a]["NrrOversAgainst"] += nrr_overs_b
 
-        # Runs and overs for Team B
         table[team_b]["RunsFor"] += runs_b
         table[team_b]["RunsAgainst"] += runs_a
-        table[team_b]["OversFor"] += overs_b_nrr
-        table[team_b]["OversAgainst"] += overs_a_nrr
+        table[team_b]["ActualOversFor"] += actual_overs_b
+        table[team_b]["ActualOversAgainst"] += actual_overs_a
+        table[team_b]["NrrOversFor"] += nrr_overs_b
+        table[team_b]["NrrOversAgainst"] += nrr_overs_a
 
-        # Result points
         if winner == team_a:
 
             table[team_a]["Wins"] += 1
@@ -372,59 +434,41 @@ def calculate_points_table(group_name, team_list, match_history):
                 "Ties",
                 "Points",
                 "RunsFor",
-                "OversFor",
+                "ActualOversFor",
                 "RunsAgainst",
-                "OversAgainst",
+                "ActualOversAgainst",
                 "Scored",
                 "Conceded",
                 "NRR"
             ]
         )
-    #st.write("DEBUG GROUP:", group_name)
-    #st.write("TEAM LIST:", team_list)
-    #st.write(result.head())
-
-    # ICC NRR formula:
-    # NRR = (Total Runs Scored / Total Overs Faced)
-    #       -
-    #       (Total Runs Conceded / Total Overs Bowled)
 
     def calculate_nrr(row):
 
-        if row["OversFor"] == 0 or row["OversAgainst"] == 0:
+        if row["NrrOversFor"] == 0 or row["NrrOversAgainst"] == 0:
             return 0.000
 
-        run_rate_for = row["RunsFor"] / row["OversFor"]
-        run_rate_against = row["RunsAgainst"] / row["OversAgainst"]
+        run_rate_for = row["RunsFor"] / row["NrrOversFor"]
+        run_rate_against = row["RunsAgainst"] / row["NrrOversAgainst"]
 
         return round(run_rate_for - run_rate_against, 3)
 
-    # ==========================================
-    # ICC NRR
-    # ==========================================
-
-
     result["NRR"] = result.apply(
-    calculate_nrr,
-    axis=1
-)
-
-    # ==========================================
-    # DISPLAY COLUMNS
-    # ==========================================
+        calculate_nrr,
+        axis=1
+    )
 
     result["Scored"] = (
-    result["RunsFor"].astype(int).astype(str)
-    + " / "
-    + result["OversFor"].round(2).astype(str)
-)
+        result["RunsFor"].astype(int).astype(str)
+        + " / "
+        + result["ActualOversFor"].apply(decimal_to_cricket_overs)
+    )
 
     result["Conceded"] = (
-    result["RunsAgainst"].astype(int).astype(str)
-    + " / "
-    + result["OversAgainst"].round(2).astype(str)
-)
-
+        result["RunsAgainst"].astype(int).astype(str)
+        + " / "
+        + result["ActualOversAgainst"].apply(decimal_to_cricket_overs)
+    )
 
     result = result.sort_values(
         by=[
@@ -443,26 +487,26 @@ def calculate_points_table(group_name, team_list, match_history):
 
     result["Rank"] = range(1, len(result) + 1)
 
-    result["OversFor"] = result["OversFor"].round(2)
-    result["OversAgainst"] = result["OversAgainst"].round(2)
+    result["ActualOversFor"] = result["ActualOversFor"].round(2)
+    result["ActualOversAgainst"] = result["ActualOversAgainst"].round(2)
 
     result = result[
-    [
-        "Rank",
-        "Team",
-        "Played",
-        "Wins",
-        "Losses",
-        "Ties",
-        "Points",
-        "RunsFor",
-        "OversFor",
-        "RunsAgainst",
-        "OversAgainst",
-        "Scored",
-        "Conceded",
-        "NRR"
-    ]
+        [
+            "Rank",
+            "Team",
+            "Played",
+            "Wins",
+            "Losses",
+            "Ties",
+            "Points",
+            "RunsFor",
+            "ActualOversFor",
+            "RunsAgainst",
+            "ActualOversAgainst",
+            "Scored",
+            "Conceded",
+            "NRR"
+        ]
     ]
 
     return result
@@ -532,7 +576,7 @@ def write_calculated_points_to_excel(
     wb.save(FILE)
 
 # ==================================================
-# LOAD MATCH HISTORY AND CALCULATE CURRENT TABLES
+# LOAD MATCH HISTORY AND CURRENT TABLES
 # ==================================================
 
 match_history = load_match_entries()
@@ -565,7 +609,10 @@ challenger_df = calculate_points_table(
 # TOP SUMMARY
 # ==================================================
 
-c1, c2, c3, c4 = st.columns(4)
+c1, c2, c3, c4, right = st.columns(
+    [1, 1, 1, 1, 1]
+    )
+
 
 with c1:
     st.metric("Elite Teams", len(groups["Elite"]))
@@ -624,18 +671,18 @@ def show_group(title, table_df, color):
         )
 
     display_df = table_df[
-    [
-        "Rank",
-        "Team",
-        "Played",
-        "Wins",
-        "Losses",
-        "Ties",
-        "Points",
-        "Scored",
-        "Conceded",
-        "NRR"
-    ]
+        [
+            "Rank",
+            "Team",
+            "Played",
+            "Wins",
+            "Losses",
+            "Ties",
+            "Points",
+            "Scored",
+            "Conceded",
+            "NRR"
+        ]
     ]
 
     left, center, right = st.columns([1, 3, 1])
@@ -730,7 +777,7 @@ with tab5:
 
     st.info(
         "Tournament rule applied: 10 overs maximum, 5 wickets maximum. "
-        "If a team loses 5 wickets, NRR uses full 10 overs as per ICC-style all-out logic."
+        "If a team loses 5 wickets, NRR uses full 10 overs for calculation, while the table displays actual overs."
     )
 
     selected_group = st.selectbox(
@@ -742,8 +789,14 @@ with tab5:
             "Challenger"
         ]
     )
-   
+
     group_teams = groups[selected_group]
+
+    if not group_teams:
+        st.error(
+            f"No teams configured for {selected_group} in Teams_Master."
+        )
+        st.stop()
 
     col1, col2 = st.columns(2)
 
@@ -826,14 +879,6 @@ with tab5:
 
             st.error("Overs must be greater than 0 for both teams.")
 
-        elif wickets_a >= MAX_WICKETS and overs_a > MAX_OVERS:
-
-            st.error("Team A overs cannot be more than 10.")
-
-        elif wickets_b >= MAX_WICKETS and overs_b > MAX_OVERS:
-
-            st.error("Team B overs cannot be more than 10.")
-
         else:
 
             if runs_a > runs_b:
@@ -899,10 +944,6 @@ with tab5:
                     f"✅ Match saved successfully. Winner: {winner}"
                 )
 
-                st.info(
-                    "Calculated points table updated in Excel sheet: Calculated_Points_Table"
-                )
-
                 st.rerun()
 
             except PermissionError:
@@ -927,11 +968,16 @@ with tab5:
 
     else:
 
+        active_latest_history = latest_history[
+            latest_history["Status"] != "Deleted"
+        ]
+
         st.dataframe(
-            latest_history.tail(20),
+            active_latest_history.tail(20),
             hide_index=True,
             use_container_width=True
         )
+
 # ==================================================
 # DELETE MATCH TAB
 # ==================================================
@@ -940,112 +986,119 @@ with tab6:
 
     st.subheader("🗑 Delete Match")
 
-    history = pd.read_excel(
-        FILE,
-        sheet_name=MATCH_SHEET
-    )
+    history = load_match_entries()
 
-    if "Status" not in history.columns:
-        history["Status"] = "Active"
+    if history.empty:
 
-    active_matches = history[
-        history["Status"] != "Deleted"
-    ].copy()
-
-    if active_matches.empty:
-
-        st.info("No active matches found.")
+        st.info("No match entries found.")
 
     else:
 
-        active_matches["MatchLabel"] = (
-            active_matches["Date"].astype(str)
-            + " | "
-            + active_matches["TeamA"]
-            + " vs "
-            + active_matches["TeamB"]
-        )
+        if "Status" not in history.columns:
+            history["Status"] = "Active"
 
-        selected_match = st.selectbox(
-            "Select Match to Delete",
-            active_matches["MatchLabel"]
-        )
+        active_matches = history[
+            history["Status"] != "Deleted"
+        ].copy()
 
-        confirm_delete = st.checkbox(
-            "I confirm this match should be deleted"
-        )
+        if active_matches.empty:
 
-        if confirm_delete and st.button(
-            "🗑 Mark Match as Deleted"
-        ):
-        
+            st.info("No active matches found.")
 
-            row_index = active_matches[
+        else:
+
+            active_matches["MatchLabel"] = (
+                active_matches["Date"].astype(str)
+                + " | "
+                + active_matches["Group"].astype(str)
+                + " | "
+                + active_matches["TeamA"].astype(str)
+                + " vs "
+                + active_matches["TeamB"].astype(str)
+            )
+
+            selected_match = st.selectbox(
+                "Select Match to Delete",
                 active_matches["MatchLabel"]
-                == selected_match
-            ].index[0]
-
-            history.loc[
-                row_index,
-                "Status"
-            ] = "Deleted"
-
-            with pd.ExcelWriter(
-                FILE,
-                engine="openpyxl",
-                mode="a",
-                if_sheet_exists="replace"
-            ) as writer:
-
-                history.to_excel(
-                    writer,
-                    sheet_name=MATCH_SHEET,
-                    index=False
-                )
-
-            st.success(
-                "✅ Match marked as Deleted"
             )
 
-            st.info(
-                "Deleted matches will no longer affect points tables."
+            confirm_delete = st.checkbox(
+                "I confirm this match should be deleted"
             )
 
+            if confirm_delete and st.button(
+                "🗑 Mark Match as Deleted"
+            ):
 
-            updated_history = pd.read_excel(
-            FILE,
-            sheet_name=MATCH_SHEET
-            )
+                row_index = active_matches[
+                    active_matches["MatchLabel"] == selected_match
+                ].index[0]
 
-            updated_elite_df = calculate_points_table(
-                "Elite",
-                groups["Elite"],
-                updated_history
-            )
+                history.loc[
+                    row_index,
+                    "Status"
+                ] = "Deleted"
 
-            updated_super_df = calculate_points_table(
-                "Super",
-                groups["Super"],
-                updated_history
-            )
+                try:
 
-            updated_golden_df = calculate_points_table(
-                "Golden",
-                groups["Golden"],
-                updated_history
-            )
+                    with pd.ExcelWriter(
+                        FILE,
+                        engine="openpyxl",
+                        mode="a",
+                        if_sheet_exists="replace"
+                    ) as writer:
 
-            updated_challenger_df = calculate_points_table(
-                "Challenger",
-                groups["Challenger"],
-                updated_history
-            )
+                        history.to_excel(
+                            writer,
+                            sheet_name=MATCH_SHEET,
+                            index=False
+                        )
 
-            write_calculated_points_to_excel(
-                updated_elite_df,
-                updated_super_df,
-                updated_golden_df,
-                updated_challenger_df
-            )
+                    updated_history = load_match_entries()
 
-            st.rerun()
+                    updated_elite_df = calculate_points_table(
+                        "Elite",
+                        groups["Elite"],
+                        updated_history
+                    )
+
+                    updated_super_df = calculate_points_table(
+                        "Super",
+                        groups["Super"],
+                        updated_history
+                    )
+
+                    updated_golden_df = calculate_points_table(
+                        "Golden",
+                        groups["Golden"],
+                        updated_history
+                    )
+
+                    updated_challenger_df = calculate_points_table(
+                        "Challenger",
+                        groups["Challenger"],
+                        updated_history
+                    )
+
+                    write_calculated_points_to_excel(
+                        updated_elite_df,
+                        updated_super_df,
+                        updated_golden_df,
+                        updated_challenger_df
+                    )
+
+                    st.success(
+                        "✅ Match marked as Deleted"
+                    )
+
+                    st.rerun()
+
+                except PermissionError:
+
+                    st.error(
+                        "Permission denied. Please close the Excel workbook and then try again."
+                    )
+
+                except Exception as e:
+
+                    st.error(f"Error while deleting match: {e}")
