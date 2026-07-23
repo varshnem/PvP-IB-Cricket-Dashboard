@@ -1279,8 +1279,66 @@ with tab7:
                 value="Temp123"
             )
 
-            if st.button("✅ Approve User"):
+            col1, col2 = st.columns(2)
 
+            with col1:
+                if st.button("✅ Approve User"):
+                    # approval code here
+                    st.success("User Approved")
+            with col2:
+                if st.button("❌ Reject User"):
+
+                    requests_df.loc[
+                        requests_df["Username"] == selected_user,
+                        "Status"
+                    ] = "Rejected"
+
+                    # Optional audit trail
+                    if "ApprovedBy" not in requests_df.columns:
+                        requests_df["ApprovedBy"] = ""
+
+                    if "ApprovedOn" not in requests_df.columns:
+                        requests_df["ApprovedOn"] = ""
+
+                    requests_df.loc[
+                        requests_df["Username"] == selected_user,
+                        "ApprovedBy"
+                    ] = st.session_state["username"]
+
+                    requests_df.loc[
+                        requests_df["Username"] == selected_user,
+                        "ApprovedOn"
+                    ] = datetime.now().strftime(
+                        "%Y-%m-%d %H:%M"
+                    )
+
+                    with pd.ExcelWriter(
+                        ACCESS_FILE,
+                        engine="openpyxl",
+                        mode="a",
+                        if_sheet_exists="replace"
+                    ) as writer:
+
+                        users_df.to_excel(
+                            writer,
+                            sheet_name="Users",
+                            index=False
+                        )
+
+                        requests_df.to_excel(
+                            writer,
+                            sheet_name="Access_Requests",
+                            index=False
+                        )
+
+                    st.success(
+                        f"{selected_user} has been rejected."
+                    )
+
+                    st.rerun()
+
+
+            
                 selected_row = pending[
                     pending["Username"] == selected_user
                 ].iloc[0]
