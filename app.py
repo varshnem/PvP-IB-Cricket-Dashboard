@@ -26,6 +26,32 @@ LOSS_POINTS = 0
 
 MAX_OVERS = 10
 MAX_WICKETS = 5
+ACCESS_FILE = "Access.xlsx"
+
+##############
+# Helper for Access
+##############
+
+def load_users():
+
+    try:
+
+        return pd.read_excel(
+            ACCESS_FILE,
+            sheet_name="Users"
+        )
+
+    except:
+
+        return pd.DataFrame(
+            columns=[
+                "Username",
+                "Password",
+                "Role",
+                "Status"
+            ]
+        )
+
 
 season_files = {
     "Season 2": "PvP IB Cricket Dashboard - Season 2.xlsx",
@@ -582,8 +608,68 @@ def write_calculated_points_to_excel(
 # LOAD MATCH HISTORY AND CURRENT TABLES
 # ==================================================
 
-match_history = load_match_entries()
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
 
+if not st.session_state["logged_in"]:
+
+    st.sidebar.subheader("🔐 Login")
+
+    username = st.sidebar.text_input(
+        "Username"
+    )
+
+    password = st.sidebar.text_input(
+        "Password",
+        type="password"
+    )
+
+    if st.sidebar.button("Login"):
+
+        users_df = load_users()
+
+        user_match = users_df[
+            (users_df["Username"] == username)
+            &
+            (users_df["Password"] == password)
+            &
+            (users_df["Status"] == "Approved")
+        ]
+
+        if not user_match.empty:
+
+            st.session_state["logged_in"] = True
+            st.session_state["role"] = user_match.iloc[0]["Role"]
+            st.session_state["username"] = username
+
+            st.rerun()
+
+        else:
+
+            st.sidebar.error(
+                "Invalid credentials"
+            )
+
+else:
+
+    st.sidebar.success(
+        f"✅ {st.session_state['username']}"
+    )
+
+    st.sidebar.info(
+        f"Role: {st.session_state['role']}"
+    )
+
+    if st.sidebar.button("Logout"):
+
+        st.session_state["logged_in"] = False
+        st.session_state.pop("role", None)
+        st.session_state.pop("username", None)
+
+        st.rerun()
+
+
+match_history = load_match_entries()
 elite_df = calculate_points_table(
     "Elite",
     groups["Elite"],
@@ -693,14 +779,16 @@ def show_group(title, table_df, color):
 # TABS
 # ==================================================
 
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
     [
         "🏆 Elite",
         "⭐ Super",
         "🥇 Golden",
         "🔥 Challenger",
         "📝 Match Entry",
-        "🗑 Delete Match"
+        "🗑 Delete Match",
+        "📝 Request Access",
+        "👑 User Management"
     ]
 )
 
@@ -757,6 +845,15 @@ with tab4:
 # ==================================================
 
 with tab5:
+
+    if st.session_state.get("role") not in [
+        "Admin",
+        "Scorekeeper"
+    ]:
+        st.warning(
+            "You do not have permission to add match results."
+        )
+        st.stop()
 
     st.markdown(
         """
@@ -983,6 +1080,12 @@ with tab5:
 
 with tab6:
 
+    if st.session_state.get("role") != "Admin":
+        st.warning(
+            "Only Admin can delete matches."
+        )
+        st.stop()
+
     st.subheader("🗑 Delete Match")
 
     history = load_match_entries()
@@ -1101,3 +1204,180 @@ with tab6:
                 except Exception as e:
 
                     st.error(f"Error while deleting match: {e}")
+
+with tab7:
+
+    st.subheader("Request Access")
+
+    req_username = st.text_input(
+        "Username"
+    )
+
+    req_email = st.text_input(
+        "Email"
+    )
+
+    if st.button("Submit Request"):
+
+        requests_df = pd.read_excel(
+            ACCESS_FILE,
+            sheet_name="Access_Requests"
+        )
+
+        new_row = pd.DataFrame(
+            [[
+                req_username,
+                req_email,
+                datetime.now().strftime(
+                    "%Y-%m-%d %H:%M"
+                ),
+                "Pending"
+            ]],
+            columns=[
+                "Username",
+                "Email",
+                "RequestedOn",
+                "Status"
+            ]
+        )
+
+        requests_df = pd.concat(
+            [requests_df, new_row],
+            ignore_index=True
+        )
+
+        with pd.ExcelWriter(
+            ACCESS_FILE,
+            engine="openpyxl",
+            mode="a",
+            if_sheet_exists="replace"
+        ) as writer:
+
+            requests_df.to_excel(
+                writer,
+                sheet_name="Access_Requests",
+                index=False
+            )
+
+        st.success(
+            "Access request submitted."
+        )                    
+
+# ==================================================
+# USER MANAGEMENT
+# ==================================================
+
+with tab8:
+
+    if st.session_state.get("role") != "Admin":
+
+        st.warning(
+            "Only Admin can access User Management."
+        )
+
+    else:
+
+        st.subheader("👑 User Management")
+
+        users_df = pd.read_excel(
+            ACCESS_FILE,
+            sheet_name="Users"
+        )
+
+        requests_df = pd.read_excel(
+            ACCESS_FILE,
+            sheet_name="Access_Requests"
+        )
+
+        st.markdown("### Pending Requests")
+
+        pending = requests_df[
+            requests_df["Status"] == "Pending"
+        ]
+
+        if pending.empty:
+
+            st.info("No pending requests.")
+
+        else:
+
+            st.dataframe(
+                pending,
+                use_container_width=True
+            )
+
+            selected_user = st.selectbox(
+                "Select Request",
+                pending["Username"]
+            )
+
+            role = st.selectbox(
+                "Assign Role",
+                [
+                    "Viewer",
+                    "Scorekeeper",
+                    "Admin"
+                ]
+            )
+
+            temp_password = st.text_input(
+                "Temporary Password",
+                value="Temp123"
+            )
+
+            if st.button("✅ Approve User"):
+
+                selected_row = pending[
+                    pending["Username"] == selected_user
+                ].iloc[0]
+
+                new_user = pd.DataFrame(
+                    [[
+                        selected_row["Username"],
+                        temp_password,
+                        role,
+                        "Approved"
+                    ]],
+                    columns=[
+                        "Username",
+                        "Password",
+                        "Role",
+                        "Status"
+                    ]
+                )
+
+                users_df = pd.concat(
+                    [users_df, new_user],
+                    ignore_index=True
+                )
+
+                requests_df.loc[
+                    requests_df["Username"] ==
+                    selected_user,
+                    "Status"
+                ] = "Approved"
+
+                with pd.ExcelWriter(
+                    ACCESS_FILE,
+                    engine="openpyxl",
+                    mode="a",
+                    if_sheet_exists="replace"
+                ) as writer:
+
+                    users_df.to_excel(
+                        writer,
+                        sheet_name="Users",
+                        index=False
+                    )
+
+                    requests_df.to_excel(
+                        writer,
+                        sheet_name="Access_Requests",
+                        index=False
+                    )
+
+                st.success(
+                    f"{selected_user} approved as {role}"
+                )
+
+                st.rerun()
