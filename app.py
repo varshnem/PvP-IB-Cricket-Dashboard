@@ -687,6 +687,36 @@ with c4:
     st.metric("Challenger Teams", len(groups["Challenger"]))
 
 # ==================================================
+# ADMIN ACCESS REQUEST ALERT
+# ==================================================
+
+if st.session_state.get("role") == "Admin":
+
+    try:
+
+        requests_df = pd.read_excel(
+            ACCESS_FILE,
+            sheet_name="Access_Requests"
+        )
+
+        pending_count = len(
+            requests_df[
+                requests_df["Status"] == "Pending"
+            ]
+        )
+
+        if pending_count > 0:
+
+            st.warning(
+                f"🔔 {pending_count} Pending Request(s) - Open User Management tab to approve."
+                )
+
+    except Exception:
+        pass
+
+
+
+# ==================================================
 # DISPLAY GROUP TABLE
 # ==================================================
 
