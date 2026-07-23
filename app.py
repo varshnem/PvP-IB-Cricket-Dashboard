@@ -636,6 +636,96 @@ def write_calculated_points_to_excel(
 
     wb.save(FILE)
 
+def calculate_player_stats(match_history):
+
+    stats = {}
+
+    for _, row in match_history.iterrows():
+
+        if row.get("Status", "Active") == "Deleted":
+            continue
+
+        team_a = row["TeamA"]
+        team_b = row["TeamB"]
+
+        runs_a = int(row["RunsA"])
+        runs_b = int(row["RunsB"])
+
+        wickets_a = int(row["WicketsA"])
+        wickets_b = int(row["WicketsB"])
+
+        winner = row["Winner"]
+
+        for player in [team_a, team_b]:
+
+            if player not in stats:
+
+                stats[player] = {
+                    "Player": player,
+                    "Matches": 0,
+                    "Wins": 0,
+                    "Losses": 0,
+                    "Runs Scored": 0,
+                    "Runs Conceded": 0,
+                    "Wickets Lost": 0,
+                    "Wickets Taken": 0,
+                    "Highest Score": 0
+                }
+
+        # TEAM A
+
+        stats[team_a]["Matches"] += 1
+        stats[team_a]["Runs Scored"] += runs_a
+        stats[team_a]["Runs Conceded"] += runs_b
+        stats[team_a]["Wickets Lost"] += wickets_a
+        stats[team_a]["Wickets Taken"] += wickets_b
+        stats[team_a]["Highest Score"] = max(
+            stats[team_a]["Highest Score"],
+            runs_a
+        )
+
+        # TEAM B
+
+        stats[team_b]["Matches"] += 1
+        stats[team_b]["Runs Scored"] += runs_b
+        stats[team_b]["Runs Conceded"] += runs_a
+        stats[team_b]["Wickets Lost"] += wickets_b
+        stats[team_b]["Wickets Taken"] += wickets_a
+        stats[team_b]["Highest Score"] = max(
+            stats[team_b]["Highest Score"],
+            runs_b
+        )
+
+        if winner == team_a:
+
+            stats[team_a]["Wins"] += 1
+            stats[team_b]["Losses"] += 1
+
+        elif winner == team_b:
+
+            stats[team_b]["Wins"] += 1
+            stats[team_a]["Losses"] += 1
+
+    player_df = pd.DataFrame(stats.values())
+
+    if not player_df.empty:
+
+        player_df["Average Score"] = (
+            player_df["Runs Scored"] /
+            player_df["Matches"]
+        ).round(2)
+
+        player_df["Win %"] = (
+            player_df["Wins"] /
+            player_df["Matches"] * 100
+        ).round(1)
+
+    return player_df
+
+
+
+
+
 # ==================================================
 # LOAD MATCH HISTORY AND CURRENT TABLES
 # ==================================================
@@ -660,11 +750,19 @@ golden_df = calculate_points_table(
     match_history
 )
 
+
+
+
 challenger_df = calculate_points_table(
     "Challenger",
     groups["Challenger"],
     match_history
 )
+
+player_stats_df = calculate_player_stats(
+    match_history
+)
+
 
 # ==================================================
 # TOP SUMMARY
@@ -774,11 +872,16 @@ def show_group(title, table_df, color):
     with center:
         st.table(display_df)
 
+
+
+
+
+
 # ==================================================
 # TABS
 # ==================================================
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
     [
         "🏆 Elite",
         "⭐ Super",
@@ -786,7 +889,8 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
         "🔥 Challenger",
         "📝 Match Entry",
         "🗑 Delete Match",
-        "👑 User Management"
+        "👑 User Management",
+        "📊 Tournament Stats"
     ]
 )
 
@@ -1380,6 +1484,148 @@ with tab7:
                     )
 
                     st.rerun()
+
+# ==================================================
+# TOURNAMENT STATS
+# ==================================================
+
+with tab8:
+
+    st.subheader("📊 Tournament Statistics")
+
+    if player_stats_df.empty:
+
+        st.info("No statistics available yet.")
+
+    else:
+
+        active_matches = match_history[
+            match_history["Status"] != "Deleted"
+        ]
+
+        total_matches = len(active_matches)
+
+        total_runs = (
+            active_matches["RunsA"].sum()
+            +
+            active_matches["RunsB"].sum()
+        )
+
+        total_wickets = (
+            active_matches["WicketsA"].sum()
+            +
+            active_matches["WicketsB"].sum()
+        )
+
+        average_score = round(
+            total_runs / (total_matches * 2),
+            2
+        ) if total_matches > 0 else 0
+
+        c1, c2, c3, c4 = st.columns(4)
+
+        with c1:
+            st.metric(
+                "Matches Played",
+                total_matches
+            )
+
+        with c2:
+            st.metric(
+                "Total Runs",
+                int(total_runs)
+            )
+
+        with c3:
+            st.metric(
+                "Total Wickets",
+                int(total_wickets)
+            )
+
+        with c4:
+            st.metric(
+                "Average Score",
+                average_score
+            )
+
+        st.markdown("### 🏆 Leaderboards")
+
+        orange_cap = player_stats_df.sort_values(
+            "Runs Scored",
+            ascending=False
+        ).iloc[0]
+
+        purple_cap = player_stats_df.sort_values(
+            "Wickets Taken",
+            ascending=False
+        ).iloc[0]
+
+        most_wins = player_stats_df.sort_values(
+            "Wins",
+            ascending=False
+        ).iloc[0]
+
+        highest_score_player = player_stats_df.sort_values(
+            "Highest Score",
+            ascending=False
+        ).iloc[0]
+
+        c1, c2, c3, c4 = st.columns(4)
+
+        with c1:
+            st.metric(
+                "🟠 Orange Cap",
+                orange_cap["Player"],
+                int(orange_cap["Runs Scored"])
+            )
+
+        with c2:
+            st.metric(
+                "🟣 Purple Cap",
+                purple_cap["Player"],
+                int(purple_cap["Wickets Taken"])
+            )
+
+        with c3:
+            st.metric(
+                "🏆 Most Wins",
+                most_wins["Player"],
+                int(most_wins["Wins"])
+            )
+
+        with c4:
+            st.metric(
+                "💥 Highest Score",
+                highest_score_player["Player"],
+                int(highest_score_player["Highest Score"])
+            )
+
+        st.markdown("### Full Player Statistics")
+
+        display_cols = [
+            "Player",
+            "Matches",
+            "Wins",
+            "Losses",
+            "Runs Scored",
+            "Runs Conceded",
+            "Highest Score",
+            "Average Score",
+            "Wickets Lost",
+            "Wickets Taken",
+            "Win %"
+        ]
+
+        st.dataframe(
+            player_stats_df[display_cols].sort_values(
+                "Runs Scored",
+                ascending=False
+            ),
+            use_container_width=True,
+            hide_index=True
+        )
+
+
 
 # ==================================================
 # LOGIN / REQUEST ACCESS FOOTER
