@@ -1279,61 +1279,107 @@ with tab7:
                 value="Temp123"
             )
 
-            if st.button("✅ Approve User"):
+            col1, col2 = st.columns(2)
 
-                selected_row = pending[
-                    pending["Username"] == selected_user
-                ].iloc[0]
+# =====================================
+# APPROVE USER
+# =====================================
 
-                new_user = pd.DataFrame(
-                    [[
-                        selected_row["Username"],
-                        temp_password,
-                        role,
-                        "Approved"
-                    ]],
-                    columns=[
-                        "Username",
-                        "Password",
-                        "Role",
-                        "Status"
-                    ]
-                )
+with col1:
 
-                users_df = pd.concat(
-                    [users_df, new_user],
-                    ignore_index=True
-                )
+    if st.button("✅ Approve User"):
 
-                requests_df.loc[
-                    requests_df["Username"] == selected_user,
-                    "Status"
-                ] = "Approved"
+        selected_row = pending[
+            pending["Username"] == selected_user
+        ].iloc[0]
 
-                with pd.ExcelWriter(
-                    ACCESS_FILE,
-                    engine="openpyxl",
-                    mode="a",
-                    if_sheet_exists="replace"
-                ) as writer:
+        new_user = pd.DataFrame(
+            [[
+                selected_row["Username"],
+                temp_password,
+                role,
+                "Approved"
+            ]],
+            columns=[
+                "Username",
+                "Password",
+                "Role",
+                "Status"
+            ]
+        )
 
-                    users_df.to_excel(
-                        writer,
-                        sheet_name="Users",
-                        index=False
-                    )
+        users_df = pd.concat(
+            [users_df, new_user],
+            ignore_index=True
+        )
 
-                    requests_df.to_excel(
-                        writer,
-                        sheet_name="Access_Requests",
-                        index=False
-                    )
+        requests_df.loc[
+            requests_df["Username"] == selected_user,
+            "Status"
+        ] = "Approved"
 
-                st.success(
-                    f"{selected_user} approved as {role}"
-                )
+        with pd.ExcelWriter(
+            ACCESS_FILE,
+            engine="openpyxl",
+            mode="a",
+            if_sheet_exists="replace"
+        ) as writer:
 
-                st.rerun()
+            users_df.to_excel(
+                writer,
+                sheet_name="Users",
+                index=False
+            )
+
+            requests_df.to_excel(
+                writer,
+                sheet_name="Access_Requests",
+                index=False
+            )
+
+        st.success(
+            f"{selected_user} approved as {role}"
+        )
+
+        st.rerun()
+
+# =====================================
+# REJECT USER
+# =====================================
+
+with col2:
+
+    if st.button("❌ Reject User"):
+
+        requests_df.loc[
+            requests_df["Username"] == selected_user,
+            "Status"
+        ] = "Rejected"
+
+        with pd.ExcelWriter(
+            ACCESS_FILE,
+            engine="openpyxl",
+            mode="a",
+            if_sheet_exists="replace"
+        ) as writer:
+
+            users_df.to_excel(
+                writer,
+                sheet_name="Users",
+                index=False
+            )
+
+            requests_df.to_excel(
+                writer,
+                sheet_name="Access_Requests",
+                index=False
+            )
+
+        st.success(
+            f"{selected_user} request rejected"
+        )
+
+        st.rerun()
 
 # ==================================================
 # LOGIN / REQUEST ACCESS FOOTER
