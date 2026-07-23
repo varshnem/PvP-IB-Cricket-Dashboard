@@ -42,9 +42,12 @@ with title_col:
     st.title("🏏 PvP IB Cricket Dashboard")
 
 with season_col:
+    st.markdown("**🏆 SEASON**")
+
     season = st.selectbox(
-        "Season",
-        list(season_files.keys())
+        "",
+        list(season_files.keys()),
+        label_visibility="collapsed"
     )
 
 
