@@ -3,6 +3,16 @@ import pandas as pd
 from datetime import datetime
 from openpyxl import load_workbook
 import os
+import ssl
+import certifi
+
+ssl._create_default_https_context = ssl._create_unverified_context
+
+os.environ["SSL_CERT_FILE"] = certifi.where()
+os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
+
+import gspread
+from google.oauth2.service_account import Credentials
 
 # ==================================================
 # PAGE CONFIG
@@ -27,6 +37,47 @@ LOSS_POINTS = 0
 MAX_OVERS = 10
 MAX_WICKETS = 5
 ACCESS_FILE = "Access.xlsx"
+
+# ==========================================
+# GOOGLE SHEETS CONNECTION
+# ==========================================
+
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+
+# Force Python to use certifi certificates
+os.environ["SSL_CERT_FILE"] = certifi.where()
+os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
+
+creds = Credentials.from_service_account_file(
+    "modified-tine-504018-m3-8dff44fd3e0a.json",
+    scopes=SCOPES
+)
+
+client = gspread.authorize(creds)
+
+season_sheets = {
+    
+    "Season 2": "PvP IB Cricket Dashboard - Season 2",
+    "Season 3": "PvP IB Cricket Dashboard - Season 3"
+}
+
+try:
+    sheet_test = client.open(
+        "PvP IB Cricket Dashboard - Season 2"
+    )
+
+    st.success(
+        "✅ Google Sheets Connection Successful"
+    )
+
+except Exception as e:
+
+    st.error(
+        f"❌ Connection Failed: {e}"
+    )
 
 # ==================================================
 # SESSION STATE
@@ -177,9 +228,15 @@ all_teams = (
 def load_match_entries():
 
     try:
-        history = pd.read_excel(
-            FILE,
-            sheet_name=MATCH_SHEET
+
+        sheet = client.open(
+            season_sheets[season]
+        ).worksheet(
+            "Online_Match_Entry"
+        )
+
+        history = pd.DataFrame(
+            sheet.get_all_records()
         )
 
         if "Status" not in history.columns:
@@ -187,7 +244,9 @@ def load_match_entries():
 
         return history
 
-    except Exception:
+    except Exception as e:
+
+        st.error(f"Google Sheet Error: {e}")
 
         columns = [
             "Date",
@@ -209,48 +268,16 @@ def load_match_entries():
 # ==================================================
 # SAVE MATCH ENTRY
 # ==================================================
-
 def save_match(match_data):
 
-    wb = load_workbook(FILE)
 
-    if MATCH_SHEET not in wb.sheetnames:
+    sheet = client.open(
+        season_sheets[season]
+    ).worksheet(
+        "Online_Match_Entry"
+    )
 
-        ws = wb.create_sheet(MATCH_SHEET)
-
-        ws.append([
-            "Date",
-            "Group",
-            "TeamA",
-            "RunsA",
-            "WicketsA",
-            "OversA",
-            "TeamB",
-            "RunsB",
-            "WicketsB",
-            "OversB",
-            "Winner",
-            "Status"
-        ])
-
-    else:
-
-        ws = wb[MATCH_SHEET]
-
-        headers = [cell.value for cell in ws[1]]
-
-        if "Group" not in headers:
-            ws.insert_cols(2)
-            ws.cell(row=1, column=2).value = "Group"
-
-        headers = [cell.value for cell in ws[1]]
-
-        if "Status" not in headers:
-            ws.cell(row=1, column=12).value = "Status"
-
-    ws.append(match_data)
-
-    wb.save(FILE)
+    sheet.append_row(match_data)
 
 # ==================================================
 # CRICKET OVERS CONVERSION
@@ -1136,12 +1163,12 @@ with tab5:
                             updated_history
                         )
 
-                        write_calculated_points_to_excel(
-                            updated_elite_df,
-                            updated_super_df,
-                            updated_golden_df,
-                            updated_challenger_df
-                        )
+                        #write_calculated_points_to_excel(
+                        #    updated_elite_df,
+                        #    updated_super_df,
+                        #    updated_golden_df,
+                        #    updated_challenger_df
+                        #)
 
                         st.success(
                             f"✅ Match saved successfully. Winner: {winner}"
@@ -1156,6 +1183,10 @@ with tab5:
                         )
 
                     except Exception as e:
+
+                        import traceback
+
+                        st.code(traceback.format_exc())
 
                         st.error(f"Error while saving match: {e}")
 
