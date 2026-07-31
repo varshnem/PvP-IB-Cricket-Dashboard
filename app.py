@@ -902,9 +902,10 @@ def show_group(title, table_df, color):
 # TABS
 # ==================================================
 
-tab1, tab5, tab6, tab7, tab8 = st.tabs(
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
     [
         "🔥 Group Stage",
+        "🏆 Knockout Stage",
         "📝 Match Entry",
         "🗑 Delete Match",
         "👑 User Management",
@@ -913,7 +914,7 @@ tab1, tab5, tab6, tab7, tab8 = st.tabs(
 )
 
 # ==================================================
-# ELITE TAB
+# Group Stage
 # ==================================================
 
 with tab1:
@@ -949,11 +950,26 @@ with tab1:
             challenger_df,
             "#DC3545"
         )
+
+# ==================================================
+# Knockout Stage
+# ==================================================
+
+
+with tab2:
+
+    st.subheader("🏆 Knockout Stage")
+
+    st.info(
+        "Knockout stage will be activated after group stage completion. " \
+        "Top two of each group will fight for Glory"
+    )
+
 # ==================================================
 # MATCH ENTRY TAB
 # ==================================================
 
-with tab5:
+with tab3:
 
     if st.session_state.get("role") not in [
         "Admin",
@@ -1196,7 +1212,7 @@ with tab5:
 # DELETE MATCH TAB
 # ==================================================
 
-with tab6:
+with tab4:
 
     if st.session_state.get("role") != "Admin":
 
@@ -1329,7 +1345,7 @@ with tab6:
 # USER MANAGEMENT
 # ==================================================
 
-with tab7:
+with tab5:
 
     if st.session_state.get("role") not in [
         "Admin",
@@ -1509,7 +1525,7 @@ with tab7:
 # TOURNAMENT STATS
 # ==================================================
 
-with tab8:
+with tab6:
 
     st.subheader("📊 Tournament Statistics")
 
