@@ -965,6 +965,26 @@ with tab2:
         "Top two of each group will fight for Glory"
     )
 
+    st.markdown("### 🏏 Tournament Bracket")
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.success("QF1\nElite #1 vs Golden #2")
+        st.success("QF2\nSuper #1 vs Challenger #2")
+        st.success("QF3\nGolden #1 vs Elite #2")
+        st.success("QF4\nChallenger #1 vs Super #2")
+
+    with c2:
+        st.info("SF1\nWinner QF1 vs Winner QF2")
+        st.info("SF2\nWinner QF3 vs Winner QF4")
+
+    with c3:
+        st.warning("🏆 FINAL\nWinner SF1 vs Winner SF2")
+
+    st.markdown("## 👑 Champion")
+    st.success("TBD")
+
 # ==================================================
 # MATCH ENTRY TAB
 # ==================================================
