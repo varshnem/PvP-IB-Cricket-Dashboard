@@ -747,7 +747,7 @@ player_stats_df = calculate_player_stats(
     match_history
 )
 
-st.write(player_stats_df.columns.tolist())
+#st.write(player_stats_df.columns.tolist())
 
 # ==================================================
 # TOP SUMMARY
