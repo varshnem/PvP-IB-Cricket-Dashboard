@@ -51,8 +51,8 @@ SCOPES = [
 os.environ["SSL_CERT_FILE"] = certifi.where()
 os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 
-creds = Credentials.from_service_account_file(
-    "modified-tine-504018-m3-8dff44fd3e0a.json",
+creds = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"],
     scopes=SCOPES
 )
 
@@ -64,20 +64,7 @@ season_sheets = {
     "Season 3": "PvP IB Cricket Dashboard - Season 3"
 }
 
-try:
-    sheet_test = client.open(
-        "PvP IB Cricket Dashboard - Season 2"
-    )
 
-    st.success(
-        "✅ Google Sheets Connection Successful"
-    )
-
-except Exception as e:
-
-    st.error(
-        f"❌ Connection Failed: {e}"
-    )
 
 # ==================================================
 # SESSION STATE
@@ -99,12 +86,19 @@ if "username" not in st.session_state:
 def load_users():
 
     try:
-        return pd.read_excel(
-            ACCESS_FILE,
-            sheet_name="Users"
+
+        sheet = client.open(
+            "Access"
+        ).worksheet(
+            "Users"
+        )
+
+        return pd.DataFrame(
+            sheet.get_all_records()
         )
 
     except Exception:
+
         return pd.DataFrame(
             columns=[
                 "Username",
@@ -118,12 +112,19 @@ def load_users():
 def load_access_requests():
 
     try:
-        return pd.read_excel(
-            ACCESS_FILE,
-            sheet_name="Access_Requests"
+
+        sheet = client.open(
+            "Access"
+        ).worksheet(
+            "Access_Requests"
+        )
+
+        return pd.DataFrame(
+            sheet.get_all_records()
         )
 
     except Exception:
+
         return pd.DataFrame(
             columns=[
                 "Username",
@@ -134,10 +135,10 @@ def load_access_requests():
         )
 
 
-season_files = {
-    "Season 2": "PvP IB Cricket Dashboard - Season 2.xlsx",
-    "Season 3": "PvP IB Cricket Dashboard - Season 3.xlsx"
-}
+season_options = [
+    "Season 2",
+    "Season 3"
+]
 
 # ==================================================
 # TITLE AND SEASON SELECTOR
@@ -153,33 +154,38 @@ with season_col:
 
     season = st.selectbox(
         "",
-        list(season_files.keys()),
+        season_options,
         label_visibility="collapsed"
     )
 
-FILE = season_files[season]
+#FILE = season_files[season]
 
-if not os.path.exists(FILE):
-    st.error(
-        f"Excel file not found: {FILE}. Please create this file in the same folder as app.py."
-    )
-    st.stop()
+#if not os.path.exists(FILE):
+#    st.error(
+#        f"Excel file not found: {FILE}. Please create this file in the same folder as app.py."
+#    )
+#    st.stop()
 
 # ==================================================
 # LOAD TEAMS MASTER
 # ==================================================
 
 try:
-    teams_df = pd.read_excel(
-        FILE,
-        sheet_name="Teams_Master"
+    sheet = client.open(
+        season_sheets[season]
+    ).worksheet(
+        "Teams_Master"
+    )
+
+    teams_df = pd.DataFrame(
+        sheet.get_all_records()
     )
 
     teams_df.columns = teams_df.columns.str.strip()
 
 except Exception as e:
     st.error(
-        f"Unable to read Teams_Master sheet from {FILE}. Error: {e}"
+        f"Unable to read Teams_Master sheet from. Error: {e}"
     )
     st.stop()
 
@@ -599,70 +605,6 @@ def calculate_points_table(group_name, team_list, match_history):
 
     return result
 
-# ==================================================
-# WRITE CALCULATED POINTS TABLE BACK TO EXCEL
-# ==================================================
-
-def write_calculated_points_to_excel(
-    elite_df,
-    super_df,
-    golden_df,
-    challenger_df
-):
-
-    wb = load_workbook(FILE)
-
-    if CALCULATED_POINTS_SHEET in wb.sheetnames:
-        del wb[CALCULATED_POINTS_SHEET]
-
-    ws = wb.create_sheet(CALCULATED_POINTS_SHEET)
-
-    def write_group(title, dataframe, start_row):
-
-        ws.cell(row=start_row, column=1).value = title
-
-        headers = list(dataframe.columns)
-
-        for col_index, header in enumerate(headers, start=1):
-            ws.cell(row=start_row + 1, column=col_index).value = header
-
-        for row_index, row in enumerate(
-            dataframe.itertuples(index=False),
-            start=start_row + 2
-        ):
-            for col_index, value in enumerate(row, start=1):
-                ws.cell(row=row_index, column=col_index).value = value
-
-        return start_row + len(dataframe) + 4
-
-    row_position = 1
-
-    row_position = write_group(
-        "Elite Points Table",
-        elite_df,
-        row_position
-    )
-
-    row_position = write_group(
-        "Super Points Table",
-        super_df,
-        row_position
-    )
-
-    row_position = write_group(
-        "Golden Points Table",
-        golden_df,
-        row_position
-    )
-
-    row_position = write_group(
-        "Challenger Points Table",
-        challenger_df,
-        row_position
-    )
-
-    wb.save(FILE)
-
 def calculate_player_stats(match_history):
 
     stats = {}
@@ -689,6 +631,7 @@ def calculate_player_stats(match_history):
 
                 stats[player] = {
                     "Player": player,
+                    "Group": "",
                     "Matches": 0,
                     "Wins": 0,
                     "Losses": 0,
@@ -732,6 +675,20 @@ def calculate_player_stats(match_history):
 
             stats[team_b]["Wins"] += 1
             stats[team_a]["Losses"] += 1
+
+    #Build Player -> group mapping
+
+    team_group_map = {}
+
+    for group_name, team_list in groups.items():
+        for team in team_list:
+            team_group_map[team] = group_name
+
+    for player in stats:
+        stats[player]["Group"] = team_group_map.get(
+            player,
+            "Unknown"
+        )
 
     player_df = pd.DataFrame(stats.values())
 
@@ -790,6 +747,7 @@ player_stats_df = calculate_player_stats(
     match_history
 )
 
+st.write(player_stats_df.columns.tolist())
 
 # ==================================================
 # TOP SUMMARY
@@ -819,10 +777,7 @@ if st.session_state.get("role") == "Admin":
 
     try:
 
-        requests_df = pd.read_excel(
-            ACCESS_FILE,
-            sheet_name="Access_Requests"
-        )
+        requests_df = load_access_requests() 
 
         pending_count = len(
             requests_df[
@@ -1448,29 +1403,30 @@ with tab7:
                         ignore_index=True
                     )
 
-                    requests_df.loc[
-                        requests_df["Username"] == selected_user,
-                        "Status"
-                    ] = "Approved"
+                    requests_sheet = client.open(
+                        "Access"
+                    ).worksheet(
+                        "Access_Requests"
+                    )
 
-                    with pd.ExcelWriter(
-                        ACCESS_FILE,
-                        engine="openpyxl",
-                        mode="a",
-                        if_sheet_exists="replace"
-                    ) as writer:
+                    records = requests_sheet.get_all_records()
 
-                        users_df.to_excel(
-                            writer,
-                            sheet_name="Users",
-                            index=False
-                        )
+                    for i, record in enumerate(records, start=2):
+                        if record["Username"] == selected_user:
+                            requests_sheet.update_cell(i, 4, "Approved")
+                            break
+                    users_sheet = client.open(
+                        "Access"
+                    ).worksheet(
+                        "Users"
+                    )
 
-                        requests_df.to_excel(
-                            writer,
-                            sheet_name="Access_Requests",
-                            index=False
-                        )
+                    users_sheet.append_row([
+                        selected_row["Username"],
+                        temp_password,
+                        role,
+                        "Approved"
+                    ])
 
                     st.success(
                         f"{selected_user} approved as {role}"
@@ -1486,10 +1442,18 @@ with tab7:
 
                 if st.button("❌ Reject User"):
 
-                    requests_df.loc[
-                        requests_df["Username"] == selected_user,
-                        "Status"
-                    ] = "Rejected"
+                    requests_sheet = client.open(
+                        "Access"
+                    ).worksheet(
+                        "Access_Requests"
+                    )
+
+                    records = requests_sheet.get_all_records()
+
+                    for i, record in enumerate(records, start=2):
+                        if record["Username"] == selected_user:
+                            requests_sheet.update_cell(i, 4, "Rejected")
+                            break
 
                     with pd.ExcelWriter(
                         ACCESS_FILE,
@@ -1635,6 +1599,7 @@ with tab8:
 
         display_cols = [
             "Player",
+            "Group",
             "Matches",
             "Wins",
             "Losses",
@@ -1783,18 +1748,20 @@ else:
                             ignore_index=True
                         )
 
-                        with pd.ExcelWriter(
-                            ACCESS_FILE,
-                            engine="openpyxl",
-                            mode="a",
-                            if_sheet_exists="replace"
-                        ) as writer:
+                        sheet = client.open(
+                            "Access"
+                        ).worksheet(
+                            "Access_Requests"
+                        )
 
-                            requests_df.to_excel(
-                                writer,
-                                sheet_name="Access_Requests",
-                                index=False
-                            )
+                        sheet.append_row([
+                            req_username,
+                            req_email,
+                            datetime.now().strftime(
+                                "%Y-%m-%d %H:%M"
+                            ),
+                            "Pending"
+                        ])
 
                         st.success(
                             "✅ Access request submitted"
