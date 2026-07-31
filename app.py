@@ -20,7 +20,7 @@ from google.oauth2.service_account import Credentials
 
 st.set_page_config(
     page_title="PvP IB Cricket Dashboard",
-    layout="wide"
+    layout="centered"
 )
 
 st.markdown("""
