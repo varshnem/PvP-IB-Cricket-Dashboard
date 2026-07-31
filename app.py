@@ -902,12 +902,9 @@ def show_group(title, table_df, color):
 # TABS
 # ==================================================
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
+tab1, tab5, tab6, tab7, tab8 = st.tabs(
     [
-        "🏆 Elite",
-        "⭐ Super",
-        "🥇 Golden",
-        "🔥 Challenger",
+        "🔥 Group Stage",
         "📝 Match Entry",
         "🗑 Delete Match",
         "👑 User Management",
@@ -921,48 +918,37 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
 
 with tab1:
 
-    show_group(
-        "🏆 Elite Points Table",
-        elite_df,
-        "#1F4E78"
-    )
+    st.subheader("🏏 Group Stage")
 
-# ==================================================
-# SUPER TAB
-# ==================================================
+    col1, col2 = st.columns(2)
 
-with tab2:
+    with col1:
 
-    show_group(
-        "⭐ Super Points Table",
-        super_df,
-        "#198754"
-    )
+        show_group(
+            "🏆 Elite Points Table",
+            elite_df,
+            "#1F4E78"
+        )
 
-# ==================================================
-# GOLDEN TAB
-# ==================================================
+        show_group(
+            "🥇 Golden Points Table",
+            golden_df,
+            "#DAA520"
+        )
 
-with tab3:
+    with col2:
 
-    show_group(
-        "🥇 Golden Points Table",
-        golden_df,
-        "#DAA520"
-    )
+        show_group(
+            "⭐ Super Points Table",
+            super_df,
+            "#198754"
+        )
 
-# ==================================================
-# CHALLENGER TAB
-# ==================================================
-
-with tab4:
-
-    show_group(
-        "🔥 Challenger Points Table",
-        challenger_df,
-        "#DC3545"
-    )
-
+        show_group(
+            "🔥 Challenger Points Table",
+            challenger_df,
+            "#DC3545"
+        )
 # ==================================================
 # MATCH ENTRY TAB
 # ==================================================
