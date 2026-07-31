@@ -23,6 +23,41 @@ st.set_page_config(
     layout="wide"
 )
 
+st.markdown("""
+<style>
+
+/* Mobile phones */
+@media (max-width: 768px) {
+
+    html, body, [class*="css"] {
+        font-size: 20px !important;
+    }
+
+    p, div, label {
+        font-size: 18px !important;
+    }
+
+    h1 {
+        font-size: 36px !important;
+    }
+
+    h2 {
+        font-size: 30px !important;
+    }
+
+    h3 {
+        font-size: 24px !important;
+    }
+
+    button {
+        font-size: 18px !important;
+    }
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
 # ==================================================
 # CONFIG
 # ==================================================
