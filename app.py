@@ -1322,7 +1322,7 @@ with tab7:
         users_df = load_users()
         requests_df = load_access_requests()
 
-        st.markdown("### Pending Requests")
+       
 
         pending = requests_df[
             requests_df["Status"] == "Pending"
