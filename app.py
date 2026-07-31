@@ -852,9 +852,13 @@ def show_group(title, table_df, color):
     left, center, right = st.columns([1, 3, 1])
 
     with center:
-        st.table(display_df)
+        #st.table(display_df)
 
-
+        st.dataframe(
+            display_df,
+            use_container_width=True,
+            hide_index=True
+        )
 
 
 
