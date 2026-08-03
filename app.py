@@ -587,7 +587,7 @@ def calculate_points_table(group_name, team_list, match_history):
         calculate_nrr,
         axis=1
     )
-    result["NRR"] = result["NRR"].map(
+    result["NRR"] = result["NRR"].apply(
         lambda x: f"{x:.4f}"
     )
 
@@ -891,14 +891,7 @@ def show_group(title, table_df, color):
     with m2:
         st.metric("Leader", leader)
 
-    display_df = display_df.rename(
-        columns={
-            "Played": "P",
-            "Wins": "W",
-            "Losses": "L",
-            "Points": "Pts"
-        }
-    )
+
 
     display_df = table_df[
         [
@@ -914,6 +907,15 @@ def show_group(title, table_df, color):
             "NRR"
         ]
     ]
+
+    display_df = display_df.rename(
+        columns={
+            "Played": "P",
+            "Wins": "W",
+            "Losses": "L",
+            "Points": "Pts"
+        }
+    )
 
     left, center, right = st.columns([1, 3, 1])
 
