@@ -773,6 +773,25 @@ def generate_group_fixtures(team_list):
 
 match_history = load_match_entries()
 
+required_cols = [
+    "Date",
+    "Group",
+    "TeamA",
+    "RunsA",
+    "WicketsA",
+    "OversA",
+    "TeamB",
+    "RunsB",
+    "WicketsB",
+    "OversB",
+    "Winner",
+    "Status"
+]
+
+for col in required_cols:
+    if col not in match_history.columns:
+        match_history[col] = ""
+
 elite_df = calculate_points_table(
     "Elite",
     groups["Elite"],
@@ -1012,9 +1031,16 @@ with tab2:
         groups[selected_group]
     )
 
-    played_matches = match_history[
-        match_history["Group"] == selected_group
-    ]
+    if "Group" in match_history.columns:
+
+        played_matches = match_history[
+            match_history["Group"] == selected_group
+        ]
+
+    else:
+
+        played_matches = pd.DataFrame()
+
 
     played_results = {}
 
