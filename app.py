@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+from itertools import combinations
 from openpyxl import load_workbook
 import os
 import ssl
@@ -642,6 +643,7 @@ def calculate_points_table(group_name, team_list, match_history):
 
 def calculate_player_stats(match_history):
 
+
     stats = {}
 
     for _, row in match_history.iterrows():
@@ -741,7 +743,22 @@ def calculate_player_stats(match_history):
 
     return player_df
 
+# ==================================================
+# GENERATE GROUP FIXTURES
+# ==================================================
 
+def generate_group_fixtures(team_list):
+
+    fixtures = []
+
+    for team_a, team_b in combinations(team_list, 2):
+
+        fixtures.append({
+            "TeamA": team_a,
+            "TeamB": team_b
+        })
+
+    return pd.DataFrame(fixtures)
 
 
 
@@ -902,9 +919,10 @@ def show_group(title, table_df, color):
 # TABS
 # ==================================================
 
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
     [
         "🔥 Group Stage",
+        "📅 Fixtures",
         "🏆 Knockout Stage",
         "📝 Match Entry",
         "🗑 Delete Match",
@@ -950,13 +968,109 @@ with tab1:
             challenger_df,
             "#DC3545"
         )
+# ==================================================
+# FIXTURES
+# ==================================================
 
+with tab2:
+
+    st.subheader("📅 Group Stage Fixtures")
+
+    selected_group = st.radio(
+        "Select Group",
+        [
+            "Elite",
+            "Super",
+            "Golden",
+            "Challenger"
+        ],
+        horizontal=True
+    )
+
+    show_pending_only = st.toggle(
+        "⏳ Show Pending Matches Only"
+    )
+
+    fixtures_df = generate_group_fixtures(
+        groups[selected_group]
+    )
+
+    played_matches = match_history[
+        match_history["Group"] == selected_group
+    ]
+
+    played_keys = set()
+
+    for _, row in played_matches.iterrows():
+
+        match_key = tuple(
+            sorted([
+                row["TeamA"],
+                row["TeamB"]
+            ])
+        )
+
+        played_keys.add(match_key)
+
+    fixtures_df["Status"] = fixtures_df.apply(
+        lambda x:
+        "✅ Played"
+        if tuple(
+            sorted([
+                x["TeamA"],
+                x["TeamB"]
+            ])
+        ) in played_keys
+        else "⏳ Pending",
+        axis=1
+    )
+
+    completed = len(
+        fixtures_df[
+            fixtures_df["Status"] == "✅ Played"
+        ]
+    )
+
+    pending = len(
+        fixtures_df[
+            fixtures_df["Status"] == "⏳ Pending"
+        ]
+    )
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.metric(
+            "✅ Completed",
+            completed
+        )
+
+    with c2:
+        st.metric(
+            "⏳ Pending",
+            pending
+        )
+
+    if show_pending_only:
+
+        fixtures_df = fixtures_df[
+            fixtures_df["Status"] == "⏳ Pending"
+        ]
+
+    st.dataframe(
+        fixtures_df,
+        use_container_width=True,
+        hide_index=True
+    )
+
+
+    
 # ==================================================
 # Knockout Stage
 # ==================================================
 
 
-with tab2:
+with tab3:
 
     st.subheader("🏆 Knockout Stage")
 
@@ -989,7 +1103,7 @@ with tab2:
 # MATCH ENTRY TAB
 # ==================================================
 
-with tab3:
+with tab5:
 
     if st.session_state.get("role") not in [
         "Admin",
@@ -1365,7 +1479,7 @@ with tab4:
 # USER MANAGEMENT
 # ==================================================
 
-with tab5:
+with tab6:
 
     if st.session_state.get("role") not in [
         "Admin",
@@ -1545,7 +1659,7 @@ with tab5:
 # TOURNAMENT STATS
 # ==================================================
 
-with tab6:
+with tab7:
 
     st.subheader("📊 Tournament Statistics")
 
