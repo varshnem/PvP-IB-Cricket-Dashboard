@@ -236,9 +236,17 @@ for col in required_team_columns:
 
 groups = {}
 
-for group_name in sorted(
-    teams_df["Group"].dropna().unique()
-):
+group_order = (
+    teams_df[
+        ["SortOrder", "Group"]
+    ]
+    .drop_duplicates()
+    .sort_values("SortOrder")
+)
+
+for _, row in group_order.iterrows():
+
+    group_name = row["Group"]
 
     groups[group_name] = (
         teams_df.loc[
