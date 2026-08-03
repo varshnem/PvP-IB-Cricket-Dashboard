@@ -975,35 +975,35 @@ with tab1:
 
     st.subheader("🏏 Group Stage")
 
-    col1, col2 = st.columns(2)
+    #col1, col2 = st.columns(2)
 
-    with col1:
+    #with col1:
 
-        show_group(
-            "🏆 Elite Points Table",
-            elite_df,
-            "#1F4E78"
-        )
+    show_group(
+        "🏆 Elite Points Table",
+        elite_df,
+        "#1F4E78"
+    )
 
-        show_group(
-            "🥇 Golden Points Table",
-            golden_df,
-            "#DAA520"
-        )
+    show_group(
+        "🥇 Golden Points Table",
+        golden_df,
+        "#DAA520"
+    )
 
-    with col2:
+    #with col2:
 
-        show_group(
-            "⭐ Super Points Table",
-            super_df,
-            "#198754"
-        )
+    show_group(
+        "⭐ Super Points Table",
+        super_df,
+        "#198754"
+    )
 
-        show_group(
-            "🔥 Challenger Points Table",
-            challenger_df,
-            "#DC3545"
-        )
+    show_group(
+        "🔥 Challenger Points Table",
+        challenger_df,
+        "#DC3545"
+    )
 # ==================================================
 # FIXTURES
 # ==================================================
