@@ -234,34 +234,25 @@ for col in required_team_columns:
         )
         st.stop()
 
-groups = {
-    "Elite": teams_df.loc[
-        teams_df["Group"] == "Elite",
-        "Team"
-    ].dropna().tolist(),
+groups = {}
 
-    "Super": teams_df.loc[
-        teams_df["Group"] == "Super",
-        "Team"
-    ].dropna().tolist(),
+for group_name in sorted(
+    teams_df["Group"].dropna().unique()
+):
 
-    "Golden": teams_df.loc[
-        teams_df["Group"] == "Golden",
-        "Team"
-    ].dropna().tolist(),
+    groups[group_name] = (
+        teams_df.loc[
+            teams_df["Group"] == group_name,
+            "Team"
+        ]
+        .dropna()
+        .tolist()
+    )
 
-    "Challenger": teams_df.loc[
-        teams_df["Group"] == "Challenger",
-        "Team"
-    ].dropna().tolist()
-}
+all_teams = []
 
-all_teams = (
-    groups["Elite"]
-    + groups["Super"]
-    + groups["Golden"]
-    + groups["Challenger"]
-)
+for team_list in groups.values():
+    all_teams.extend(team_list)
 
 # ==================================================
 # LOAD ONLINE MATCH ENTRIES
@@ -975,35 +966,28 @@ with tab1:
 
     st.subheader("🏏 Group Stage")
 
-    #col1, col2 = st.columns(2)
+    colors = [
+        "#1F4E78",  # Blue
+        "#198754",  # Green
+        "#DAA520",  # Gold
+        "#DC3545",  # Red
+        "#6F42C1",  # Purple
+        "#0DCAF0"   # Cyan
+    ]
 
-    #with col1:
+    for i, group_name in enumerate(groups.keys()):
 
-    show_group(
-        "🏆 Elite Points Table",
-        elite_df,
-        "#1F4E78"
-    )
+        group_df = calculate_points_table(
+            group_name,
+            groups[group_name],
+            match_history
+        )
 
-    show_group(
-        "🥇 Golden Points Table",
-        golden_df,
-        "#DAA520"
-    )
-
-    #with col2:
-
-    show_group(
-        "⭐ Super Points Table",
-        super_df,
-        "#198754"
-    )
-
-    show_group(
-        "🔥 Challenger Points Table",
-        challenger_df,
-        "#DC3545"
-    )
+        show_group(
+            f"🏆 {group_name} Points Table",
+            group_df,
+            colors[i % len(colors)]
+        )
 # ==================================================
 # FIXTURES
 # ==================================================
@@ -1014,12 +998,7 @@ with tab2:
 
     selected_group = st.radio(
         "Select Group",
-        [
-            "Elite",
-            "Super",
-            "Golden",
-            "Challenger"
-        ],
+        list(groups.keys()),
         horizontal=True
     )
 
