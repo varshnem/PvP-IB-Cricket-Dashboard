@@ -999,7 +999,7 @@ with tab2:
         match_history["Group"] == selected_group
     ]
 
-    played_keys = set()
+    played_results = {}
 
     for _, row in played_matches.iterrows():
 
@@ -1010,7 +1010,7 @@ with tab2:
             ])
         )
 
-        played_keys.add(match_key)
+        played_results[match_key] = row["Winner"]
 
     fixtures_df["Status"] = fixtures_df.apply(
         lambda x:
@@ -1020,8 +1020,21 @@ with tab2:
                 x["TeamA"],
                 x["TeamB"]
             ])
-        ) in played_keys
+        ) in played_results
         else "⏳ Pending",
+        axis=1
+        )
+
+    fixtures_df["Result"] = fixtures_df.apply(
+        lambda x:
+        f"🏆 {played_results.get(tuple(sorted([x['TeamA'], x['TeamB']])), '')}"
+        if tuple(
+            sorted([
+                x["TeamA"],
+                x["TeamB"]
+            ])
+        ) in played_results
+        else "",
         axis=1
     )
 
@@ -1064,7 +1077,7 @@ with tab2:
     )
 
 
-    
+
 # ==================================================
 # Knockout Stage
 # ==================================================
