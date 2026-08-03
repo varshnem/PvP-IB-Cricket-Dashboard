@@ -581,13 +581,18 @@ def calculate_points_table(group_name, team_list, match_history):
         run_rate_for = row["RunsFor"] / row["NrrOversFor"]
         run_rate_against = row["RunsAgainst"] / row["NrrOversAgainst"]
 
-        return round(run_rate_for - run_rate_against, 3)
+        return round(run_rate_for - run_rate_against, 4)
 
     result["NRR"] = result.apply(
         calculate_nrr,
         axis=1
     )
+    result["NRR"] = result["NRR"].map(
+        lambda x: f"{x:.4f}"
+    )
 
+
+    
     result["Scored"] = (
         result["RunsFor"].astype(int).astype(str)
         + " / "
@@ -886,6 +891,15 @@ def show_group(title, table_df, color):
     with m2:
         st.metric("Leader", leader)
 
+    display_df = display_df.rename(
+        columns={
+            "Played": "P",
+            "Wins": "W",
+            "Losses": "L",
+            "Points": "Pts"
+        }
+    )
+
     display_df = table_df[
         [
             "Rank",
@@ -909,7 +923,8 @@ def show_group(title, table_df, color):
         st.dataframe(
             display_df,
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
+            height=300
         )
 
 
