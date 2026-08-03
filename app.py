@@ -1087,11 +1087,26 @@ with tab2:
             fixtures_df["Status"] == "⏳ Pending"
         ]
 
+    def highlight_matches(row):
+
+        if row["Status"] == "⏳ Pending":
+            return ["background-color: #FFF9C4"] * len(row)
+
+        if row["Status"] == "✅ Played":
+            return ["background-color: #E8F5E9"] * len(row)
+
+        return [""] * len(row)
+
+
     st.dataframe(
-        fixtures_df,
+        fixtures_df.style.apply(
+            highlight_matches,
+            axis=1
+        ),
         use_container_width=True,
         hide_index=True
     )
+
 
 
 
