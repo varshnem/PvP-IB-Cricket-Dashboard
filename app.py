@@ -921,9 +921,9 @@ def show_group(title, table_df, color):
             "Losses",
             "Ties",
             "Points",
+            "NRR",
             "Scored",
-            "Conceded",
-            "NRR"
+            "Conceded"
         ]
     ]
 
