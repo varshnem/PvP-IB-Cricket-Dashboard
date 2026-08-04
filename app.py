@@ -1248,9 +1248,15 @@ with tab3:
                     f"""
                     {row['Match']}
 
-                    {row['TeamA']}
+                    {row['TeamA']} {row['RunsA']}/{row['WicketsA']}
+                    ({row['OversA']})
+
                     vs
-                    {row['TeamB']}
+
+                    {row['TeamB']} {row['RunsB']}/{row['WicketsB']}
+                    ({row['OversB']})
+
+                    🏆 Winner: {row['Winner']}
                     """
                 )
 with c2:
