@@ -69,6 +69,7 @@ CALCULATED_POINTS_SHEET = "Calculated_Points_Table"
 WIN_POINTS = 2
 TIE_POINTS = 1
 LOSS_POINTS = 0
+NO_RESULT_POINTS = 0
 
 MAX_OVERS = 10
 MAX_WICKETS = 5
@@ -407,6 +408,7 @@ def calculate_points_table(group_name, team_list, match_history):
             "Wins": 0,
             "Losses": 0,
             "Ties": 0,
+            "NR": 0,
             "Points": 0,
             "RunsFor": 0,
             "RunsAgainst": 0,
@@ -531,7 +533,6 @@ def calculate_points_table(group_name, team_list, match_history):
             table[team_a]["Points"] += WIN_POINTS
 
             table[team_b]["Losses"] += 1
-            table[team_b]["Points"] += LOSS_POINTS
 
         elif winner == team_b:
 
@@ -539,15 +540,19 @@ def calculate_points_table(group_name, team_list, match_history):
             table[team_b]["Points"] += WIN_POINTS
 
             table[team_a]["Losses"] += 1
-            table[team_a]["Points"] += LOSS_POINTS
 
-        else:
+        elif winner == "Tie":
 
             table[team_a]["Ties"] += 1
             table[team_b]["Ties"] += 1
 
             table[team_a]["Points"] += TIE_POINTS
             table[team_b]["Points"] += TIE_POINTS
+
+        elif winner == "No Result":
+
+            table[team_a]["NR"] += 1
+            table[team_b]["NR"] += 1
 
     result = pd.DataFrame(list(table.values()))
 
@@ -919,6 +924,7 @@ def show_group(title, table_df, color):
             "Wins",
             "Losses",
             "Ties",
+            "NR",
             "Points",
             "NRR",
             "Scored",
@@ -931,6 +937,8 @@ def show_group(title, table_df, color):
             "Played": "P",
             "Wins": "W",
             "Losses": "L",
+            "Ties": "T",
+            "NR": "NR",
             "Points": "Pts"
         }
     )
@@ -1294,6 +1302,18 @@ with tab5:
                 elif overs_a <= 0 or overs_b <= 0:
 
                     st.error("Overs must be greater than 0 for both teams.")
+
+                else:
+
+                    result_type = st.radio(
+                    "Result Type",
+                    ["Normal Result", "No Result"],
+                    horizontal=True
+                )
+
+                if result_type == "No Result":
+
+                    winner = "No Result"
 
                 else:
 
