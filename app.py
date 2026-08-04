@@ -431,6 +431,7 @@ def calculate_points_table(group_name, team_list, match_history):
                     "Wins",
                     "Losses",
                     "Ties",
+                    "NR",
                     "Points",
                     "RunsFor",
                     "ActualOversFor",
@@ -455,6 +456,7 @@ def calculate_points_table(group_name, team_list, match_history):
                 "Wins",
                 "Losses",
                 "Ties",
+                "NR",
                 "Points",
                 "RunsFor",
                 "ActualOversFor",
@@ -637,6 +639,7 @@ def calculate_points_table(group_name, team_list, match_history):
             "Wins",
             "Losses",
             "Ties",
+            "NR",
             "Points",
             "RunsFor",
             "ActualOversFor",
@@ -1169,7 +1172,7 @@ with tab3:
 # MATCH ENTRY TAB
 # ==================================================
 
-with tab5:
+with tab4:
 
     if st.session_state.get("role") not in [
         "Admin",
@@ -1424,7 +1427,7 @@ with tab5:
 # DELETE MATCH TAB
 # ==================================================
 
-with tab4:
+with tab5:
 
     if st.session_state.get("role") != "Admin":
 
