@@ -699,14 +699,17 @@ def calculate_player_stats(match_history):
         if row.get("Status", "Active") == "Deleted":
             continue
 
+        if str(row.get("Winner", "")).strip() == "":
+            continue
+          
         team_a = row["TeamA"]
         team_b = row["TeamB"]
 
-        runs_a = int(row["RunsA"])
-        runs_b = int(row["RunsB"])
+        runs_a = int(row.get("RunsA", 0) or 0)
+        runs_b = int(row.get("RunsB", 0) or 0)
 
-        wickets_a = int(row["WicketsA"])
-        wickets_b = int(row["WicketsB"])
+        wickets_a = int(row.get("WicketsA", 0) or 0)
+        wickets_b = int(row.get("WicketsB", 0) or 0)
 
         winner = row["Winner"]
 
@@ -1857,7 +1860,7 @@ with tab7:
     else:
 
         active_matches = tournament_history[
-            match_history["Status"] != "Deleted"
+            tournament_history["Status"] != "Deleted"
         ]
 
         total_matches = len(active_matches)
