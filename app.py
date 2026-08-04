@@ -849,7 +849,21 @@ tournament_history = pd.concat(
     ignore_index=True
 )
 
+numeric_cols = [
+    "RunsA",
+    "RunsB",
+    "WicketsA",
+    "WicketsB",
+    "OversA",
+    "OversB"
+]
 
+for col in numeric_cols:
+
+    tournament_history[col] = pd.to_numeric(
+        tournament_history[col],
+        errors="coerce"
+    ).fillna(0)
 
 required_cols = [
     "Date",
