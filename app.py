@@ -1228,10 +1228,23 @@ with tab3:
 
     st.subheader("🏆 Knockout Stage")
 
-    st.info(
-        "Knockout stage will be activated after group stage completion. " \
-        "Top two of each group will fight for Glory"
-    )
+    completed_qf = knockout_df[
+        (knockout_df["Stage"] == "Quarter Final") &
+        (knockout_df["Winner"].astype(str).str.strip() != "")
+    ]
+
+    if len(completed_qf) == 0:
+
+        st.info(
+            "Knockout stage will be activated after group stage completion. "
+            "Top two of each group will fight for Glory"
+        )
+
+    else:
+
+        st.success(
+            f"🏏 Knockout Stage Active | {len(completed_qf)} Quarter Final(s) completed"
+        )
 
     st.markdown("### 🏏 Tournament Bracket")
 
