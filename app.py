@@ -1330,13 +1330,21 @@ with tab3:
 
         for _, row in final_df.iterrows():
 
+            team_a = resolve_team_name(
+                row["TeamA"]
+            )
+
+            team_b = resolve_team_name(
+                row["TeamB"]
+            )
+
             st.warning(
                 f"""
                 🏆 {row['Match']}
 
-                {row['TeamA']}
+                {team_a}
                 vs
-                {row['TeamB']}
+                {team_b}
                 """
             )
 # ==================================================
