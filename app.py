@@ -1243,7 +1243,7 @@ with tab3:
     else:
 
         st.success(
-            f"🏏 Knockout Stage Active | {len(completed_qf)} Quarter Final(s) completed"
+            f"🏏 Knockout Stage Active "
         )
 
     st.markdown("### 🏏 Tournament Bracket")
