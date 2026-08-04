@@ -1406,17 +1406,17 @@ with tab4:
             ]
         )
 
-    if entry_type == "Group Stage":
+        if entry_type == "Group Stage":
 
-        selected_group = st.selectbox(
-            "Select Group",
-            [
-                "Elite",
-                "Super",
-                "Golden",
-                "Challenger"
-            ]
-        )
+            selected_group = st.selectbox(
+                "Select Group",
+                [
+                    "Elite",
+                    "Super",
+                    "Golden",
+                    "Challenger"
+                ]
+            )
 
         group_teams = groups[selected_group]
 
