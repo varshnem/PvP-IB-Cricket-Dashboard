@@ -307,6 +307,38 @@ def load_match_entries():
 
         return pd.DataFrame(columns=columns)
 
+
+def load_knockout_matches():
+
+    try:
+
+        sheet = client.open(
+            season_sheets[season]
+        ).worksheet(
+            "Knockout_Matches"
+        )
+
+        return pd.DataFrame(
+            sheet.get_all_records()
+        )
+
+    except Exception as e:
+
+        st.error(f"Knockout Sheet Error: {e}")
+
+        return pd.DataFrame(
+            columns=[
+                "Stage",
+                "Match",
+                "TeamA",
+                "TeamB",
+                "MatchDate",
+                "Venue",
+                "Winner"
+            ]
+        )
+
+    
 # ==================================================
 # SAVE MATCH ENTRY
 # ==================================================
@@ -779,6 +811,8 @@ def generate_group_fixtures(team_list):
 # ==================================================
 
 match_history = load_match_entries()
+
+knockout_df = load_knockout_matches()
 
 required_cols = [
     "Date",
