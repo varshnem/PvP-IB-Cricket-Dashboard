@@ -1296,6 +1296,12 @@ with tab4:
                     key="overs_b"
                 )
 
+            result_type = st.radio(
+                "Result Type",
+                ["Normal Result", "No Result"],
+                horizontal=True
+            )
+
             if st.button("💾 Save Match Result"):
 
                 if team_a == team_b:
@@ -1308,26 +1314,22 @@ with tab4:
 
                 else:
 
-                    result_type = st.radio(
-                    "Result Type",
-                    ["Normal Result", "No Result"],
-                    horizontal=True
-                )
 
-                if result_type == "No Result":
 
-                    winner = "No Result"
+                    if result_type == "No Result":
 
-                else:
-
-                    if runs_a > runs_b:
-                        winner = team_a
-
-                    elif runs_b > runs_a:
-                        winner = team_b
+                        winner = "No Result"
 
                     else:
-                        winner = "Tie"
+
+                        if runs_a > runs_b:
+                            winner = team_a
+
+                        elif runs_b > runs_a:
+                            winner = team_b
+
+                        else:
+                            winner = "Tie"
 
                     match_data = [
                         datetime.now().strftime("%Y-%m-%d %H:%M"),
