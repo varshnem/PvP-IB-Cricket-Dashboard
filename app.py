@@ -1243,7 +1243,7 @@ with tab3:
     else:
 
         st.success(
-            f"🏏 Knockout Stage Active "
+            f"🏏 Knockout Stage Active | {len(completed_qf)} Quarter Final(s) completed"
         )
 
     st.markdown("### 🏏 Tournament Bracket")
@@ -1397,6 +1397,16 @@ with tab4:
             "Tournament rule applied: 10 overs maximum, 5 wickets maximum. "
             "If a team loses 5 wickets, NRR uses full 10 overs for calculation, while the table displays actual overs."
         )
+
+        entry_type = st.selectbox(
+            "Match Type",
+            [
+                "Group Stage",
+                "Knockout Stage"
+            ]
+        )
+
+    if entry_type == "Group Stage":
 
         selected_group = st.selectbox(
             "Select Group",
@@ -1616,7 +1626,22 @@ with tab4:
                     hide_index=True,
                     use_container_width=True
                 )
+    elif entry_type == "Knockout Stage":
 
+        st.subheader("🏆 Knockout Match Entry")
+
+        ko_match = st.selectbox(
+            "Select Knockout Match",
+            knockout_df["Match"].tolist()
+        )
+
+        selected_row = knockout_df[
+            knockout_df["Match"] == ko_match
+        ].iloc[0]
+
+        st.info(
+            f"{selected_row['TeamA']} vs {selected_row['TeamB']}"
+        )
 # ==================================================
 # DELETE MATCH TAB
 # ==================================================
