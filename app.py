@@ -331,9 +331,13 @@ def load_knockout_matches():
                 "Stage",
                 "Match",
                 "TeamA",
+                "RunsA",
+                "WicketsA",
+                "OversA",
                 "TeamB",
-                "MatchDate",
-                "Venue",
+                "RunsB",
+                "WicketsB",
+                "OversB",
                 "Winner"
             ]
         )
@@ -814,6 +818,36 @@ match_history = load_match_entries()
 
 knockout_df = load_knockout_matches()
 
+
+knockout_history = pd.DataFrame()
+
+if not knockout_df.empty:
+
+    knockout_history = pd.DataFrame({
+        "Date": "",
+        "Group": knockout_df["Stage"],
+        "TeamA": knockout_df["TeamA"],
+        "RunsA": knockout_df["RunsA"],
+        "WicketsA": knockout_df["WicketsA"],
+        "OversA": knockout_df["OversA"],
+        "TeamB": knockout_df["TeamB"],
+        "RunsB": knockout_df["RunsB"],
+        "WicketsB": knockout_df["WicketsB"],
+        "OversB": knockout_df["OversB"],
+        "Winner": knockout_df["Winner"],
+        "Status": "Active"
+    })
+
+tournament_history = pd.concat(
+    [
+        match_history,
+        knockout_history
+    ],
+    ignore_index=True
+)
+
+
+
 required_cols = [
     "Date",
     "Group",
@@ -861,7 +895,7 @@ challenger_df = calculate_points_table(
 )
 
 player_stats_df = calculate_player_stats(
-    match_history
+    tournament_history
 )
 
 #st.write(player_stats_df.columns.tolist())
@@ -1822,7 +1856,7 @@ with tab7:
 
     else:
 
-        active_matches = match_history[
+        active_matches = tournament_history[
             match_history["Status"] != "Deleted"
         ]
 
