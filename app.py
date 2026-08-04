@@ -1235,6 +1235,42 @@ with tab3:
 
     st.markdown("### 🏏 Tournament Bracket")
 
+    # ======================================
+    # Build Winner Map
+    # ======================================
+
+    winner_map = {}
+
+    for _, row in knockout_df.iterrows():
+
+        match = str(row["Match"]).strip()
+        winner = str(row["Winner"]).strip()
+
+        if winner:
+            winner_map[match] = winner
+
+    def resolve_team_name(team_name):
+        match = str(row["Match"]).strip()
+        winner = str(row["Winner"]).strip()
+
+        if winner:
+            winner_map[match] = winner
+    def resolve_team_name(team_name):
+        team_name = str(team_name)
+
+        if team_name.startswith("Winner "):
+
+            match_id = team_name.replace(
+                "Winner ",
+                ""
+            ).strip()
+
+            return winner_map.get(
+                match_id,
+                team_name
+            )
+        return team_name
+
     c1, c2, c3 = st.columns(3)
 
     with c1:
@@ -1259,42 +1295,50 @@ with tab3:
                     🏆 Winner: {row['Winner']}
                     """
                 )
-with c2:
+    with c2:
 
-    sf_df = knockout_df[
-        knockout_df["Stage"] == "Semi Final"
-    ]
+        sf_df = knockout_df[
+            knockout_df["Stage"] == "Semi Final"
+        ]
 
-    for _, row in sf_df.iterrows():
+        for _, row in sf_df.iterrows():
 
-        st.info(
-            f"""
-            {row['Match']}
+            team_a = resolve_team_name(
+                row["TeamA"]
+            )
 
-            {row['TeamA']}
-            vs
-            {row['TeamB']}
-            """
-        )
+            team_b = resolve_team_name(
+                row["TeamB"]
+            )
+
+            st.info(
+                f"""
+                {row['Match']}
+
+                {team_a}
+                vs
+                {team_b}
+                """
+            )
 
 
-with c3:
+    with c3:
 
-    final_df = knockout_df[
-        knockout_df["Stage"] == "Final"
-    ]
+        final_df = knockout_df[
+            knockout_df["Stage"] == "Final"
+        ]
 
-    for _, row in final_df.iterrows():
+        for _, row in final_df.iterrows():
 
-        st.warning(
-            f"""
-            🏆 {row['Match']}
+            st.warning(
+                f"""
+                🏆 {row['Match']}
 
-            {row['TeamA']}
-            vs
-            {row['TeamB']}
-            """
-        )
+                {row['TeamA']}
+                vs
+                {row['TeamB']}
+                """
+            )
 # ==================================================
 # MATCH ENTRY TAB
 # ==================================================
