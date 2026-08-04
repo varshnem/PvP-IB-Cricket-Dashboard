@@ -1626,22 +1626,23 @@ with tab4:
                     hide_index=True,
                     use_container_width=True
                 )
-    elif entry_type == "Knockout Stage":
+                                
+                if entry_type == "Knockout Stage":
 
-        st.subheader("🏆 Knockout Match Entry")
+                    st.subheader("🏆 Knockout Match Entry")
 
-        ko_match = st.selectbox(
-            "Select Knockout Match",
-            knockout_df["Match"].tolist()
-        )
+                    ko_match = st.selectbox(
+                        "Select Knockout Match",
+                        knockout_df["Match"].tolist()
+                    )
 
-        selected_row = knockout_df[
-            knockout_df["Match"] == ko_match
-        ].iloc[0]
+                    selected_row = knockout_df[
+                        knockout_df["Match"] == ko_match
+                    ].iloc[0]
 
-        st.info(
-            f"{selected_row['TeamA']} vs {selected_row['TeamB']}"
-        )
+                    st.info(
+                        f"{selected_row['TeamA']} vs {selected_row['TeamB']}"
+                    )
 # ==================================================
 # DELETE MATCH TAB
 # ==================================================
